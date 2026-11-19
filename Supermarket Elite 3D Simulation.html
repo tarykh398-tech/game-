@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Supermarket Elite 3D</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js & Tone.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <!-- Google Fonts: Inter & Cairo (Arabic) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    :root {
+      --font-en: 'Inter', sans-serif;
+      --font-ar: 'Cairo', sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0f19;
+      color: #f8fafc;
+      font-family: var(--font-en);
+    }
+    html[dir="rtl"] body {
+      font-family: var(--font-ar);
+    }
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.8);
+    }
+    /* Glassmorphism Panels */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      transform: translateY(-2px);
+    }
+    /* AAA Button Styling */
+    .btn-aaa {
+      background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+      box-shadow: 0 4px 15px rgba(14, 165, 233, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: all 0.18s ease;
+    }
+    .btn-aaa:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+    }
+    .btn-aaa:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .btn-aaa:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-emerald {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .btn-amber {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    /* Crosshair pulse */
+    @keyframes pulse-ring {
+      0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+      50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+    }
+    .crosshair-active {
+      animation: pulse-ring 1.2s infinite ease-in-out;
+      border-color: #38bdf8 !important;
+      background-color: rgba(56, 189, 248, 0.3) !important;
+    }
+    /* Toast Slide */
+    @keyframes slideInToast {
+      from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .toast-anim {
+      animation: slideInToast 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="overflow-hidden select-none">
+
+  <!-- 3D WebGL Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ==================== MAIN MENU OVERLAY ==================== -->
+  <div id="main-menu" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4">
+    <div class="glass-panel w-full max-w-4xl rounded-3xl p-6 md:p-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden">
+      <!-- Decorative Glow -->
+      <div class="absolute -top-24 -left-24 w-64 h-64 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Brand & Hero -->
+      <div class="flex-1 text-center md:text-start space-y-4 z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-semibold tracking-wider uppercase">
+          <i class="fa-solid fa-crown text-amber-400"></i>
+          <span data-i18n="edition_tag">AAA RETAIL TYCOON SIMULATION</span>
+        </div>
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-400 bg-clip-text text-transparent">
+          SUPERMARKET <span class="text-sky-400">ELITE</span>
+        </h1>
+        <p class="text-slate-300 text-sm md:text-base leading-relaxed" data-i18n="menu_subtitle">
+          Build your retail empire from a neighborhood corner shop into an international megastore. Manage 200+ products, dynamic AI shoppers, checkout counters, staff, and finances in full 3D.
+        </p>
+
+        <!-- Language Quick Toggle -->
+        <div class="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
+          <button onclick="Game.setLanguage('en')" id="btn-lang-en" class="px-4 py-2 rounded-xl text-sm font-bold border border-sky-400 bg-sky-500/20 text-white transition">
+            🇺🇸 English (EN)
+          </button>
+          <button onclick="Game.setLanguage('ar')" id="btn-lang-ar" class="px-4 py-2 rounded-xl text-sm font-bold border border-slate-600 bg-slate-800/70 text-slate-300 hover:border-sky-400 transition">
+            🇪🇬 العربية (RTL)
+          </button>
+        </div>
+      </div>
+
+      <!-- Menu Navigation Buttons -->
+      <div class="w-full md:w-80 flex flex-col gap-3 z-10">
+        <button onclick="Game.startNewGame()" class="btn-aaa w-full py-3.5 px-5 rounded-2xl font-bold text-base flex items-center justify-between text-white">
+          <span data-i18n="new_game">New Game</span>
+          <i class="fa-solid fa-play"></i>
+        </button>
+        <button onclick="Game.continueGame()" id="btn-continue" class="btn-emerald w-full py-3.5 px-5 rounded-2xl font-bold text-base flex items-center justify-between text-white">
+          <span data-i18n="continue_game">Continue</span>
+          <i class="fa-solid fa-forward"></i>
+        </button>
+        <button onclick="UI.openModal('modal-saves')" class="glass-card w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-between text-slate-200">
+          <span data-i18n="load_save_game">Save / Load Slots</span>
+          <i class="fa-solid fa-floppy-disk text-sky-400"></i>
+        </button>
+        <button onclick="UI.openModal('modal-settings')" class="glass-card w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-between text-slate-200">
+          <span data-i18n="settings">Settings & Controls</span>
+          <i class="fa-solid fa-sliders text-sky-400"></i>
+        </button>
+        <button onclick="UI.openModal('modal-credits')" class="glass-card w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-between text-slate-200">
+          <span data-i18n="credits">Credits & Guide</span>
+          <i class="fa-solid fa-circle-info text-sky-400"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== IN-GAME HUD ==================== -->
+  <div id="hud-container" class="hidden fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-2.5 md:p-4">
+
+    <!-- TOP BAR: Stats, Time, Quick Actions -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+      <!-- Left Metrics Pill -->
+      <div class="glass-panel rounded-2xl px-3.5 py-2 flex flex-wrap items-center gap-3 md:gap-5 text-xs md:text-sm">
+        <!-- Cash -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+            <i class="fa-solid fa-dollar-sign"></i>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold" data-i18n="hud_balance">Balance</div>
+            <div id="hud-money" class="font-extrabold text-emerald-400 text-sm md:text-base">$2,500.00</div>
+          </div>
+        </div>
+
+        <div class="h-7 w-px bg-slate-700/80 hidden sm:block"></div>
+
+        <!-- Store Level & XP -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+            <i class="fa-solid fa-store"></i>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold" data-i18n="hud_level">Store Lv.</div>
+            <div id="hud-level" class="font-bold text-white">1 <span class="text-xs text-sky-400 font-normal">(0/100 XP)</span></div>
+          </div>
+        </div>
+
+        <div class="h-7 w-px bg-slate-700/80 hidden sm:block"></div>
+
+        <!-- Rating -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-star"></i>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold" data-i18n="hud_rating">Rating</div>
+            <div id="hud-rating" class="font-bold text-amber-300">3.5 ★</div>
+          </div>
+        </div>
+
+        <div class="h-7 w-px bg-slate-700/80 hidden md:block"></div>
+
+        <!-- Customers & Dirt -->
+        <div class="hidden md:flex items-center gap-4">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold" data-i18n="hud_shoppers">Shoppers</div>
+            <div id="hud-customers" class="font-bold text-slate-100"><i class="fa-solid fa-users text-sky-400 me-1"></i>0</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold" data-i18n="hud_cleanliness">Cleanliness</div>
+            <div id="hud-clean" class="font-bold text-emerald-300">100%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center/Right: Day, Time, Weather & Open/Close Toggle -->
+      <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 text-xs md:text-sm">
+        <div class="text-end">
+          <div id="hud-day-weather" class="font-bold text-slate-100 flex items-center gap-1.5 justify-end">
+            <i id="hud-weather-icon" class="fa-solid fa-sun text-amber-400"></i>
+            <span id="hud-day">Day 1</span>
+          </div>
+          <div id="hud-time" class="text-xs font-mono text-sky-300">08:00 AM</div>
+        </div>
+
+        <button id="btn-store-status" onclick="Game.toggleStoreOpen()" class="px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 transition">
+          <i class="fa-solid fa-door-closed me-1"></i>
+          <span id="hud-store-status-text" data-i18n="store_closed">CLOSED</span>
+        </button>
+
+        <button onclick="UI.pauseToMenu()" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-600/60 flex items-center justify-center text-slate-200 hover:border-sky-400" title="Menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Active Mission Tracker (Top-Left/Right) + Center Crosshair + Interaction Prompt -->
+    <div class="flex-1 relative flex items-center justify-center">
+      <!-- Active Mission Floating Card -->
+      <div id="hud-mission-box" class="glass-panel rounded-2xl p-3 w-64 md:w-72 absolute top-2 start-0 pointer-events-auto border-s-4 border-s-sky-400">
+        <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-sky-400 font-bold mb-1">
+          <span><i class="fa-solid fa-trophy me-1"></i><span data-i18n="active_quest">Active Quest</span></span>
+          <span id="hud-mission-reward" class="text-emerald-400 font-extrabold">+$500</span>
+        </div>
+        <div id="hud-mission-title" class="text-xs md:text-sm font-bold text-white mb-1.5">Open your first supermarket</div>
+        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
+          <div id="hud-mission-bar" class="bg-gradient-to-r from-sky-400 to-emerald-400 h-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-300">
+          <span id="hud-mission-progress">0 / 1</span>
+          <button onclick="UI.openTablet('missions')" class="text-sky-400 hover:underline font-semibold" data-i18n="view_all">View All</button>
+        </div>
+      </div>
+
+      <!-- Toast Notifications Stack -->
+      <div id="toast-container" class="absolute top-2 end-0 flex flex-col gap-2 w-72 md:w-80 pointer-events-none z-40"></div>
+
+      <!-- Center Reticle & Contextual Action Prompt -->
+      <div class="flex flex-col items-center justify-center pointer-events-none">
+        <div id="crosshair" class="w-3.5 h-3.5 rounded-full border-2 border-white/80 bg-white/20 transition-all duration-150"></div>
+        <div id="interact-prompt" class="hidden mt-3 glass-panel px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-white flex items-center gap-2 border border-sky-400/50 shadow-lg">
+          <span class="px-2 py-0.5 rounded bg-sky-500 text-slate-950 font-extrabold text-xs">E / TAP</span>
+          <span id="interact-text">Interact</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR: Holding Box Indicator + Management Tablet Dock + Mobile Touch Controls -->
+    <div class="flex flex-col gap-2 pointer-events-none">
+      <!-- Holding Item Banner -->
+      <div id="holding-banner" class="hidden self-center glass-panel px-4 py-2 rounded-2xl border border-amber-400/50 flex items-center gap-3 pointer-events-auto">
+        <i class="fa-solid fa-box-open text-amber-400 text-lg"></i>
+        <div class="text-xs md:text-sm">
+          <span class="text-slate-400" data-i18n="holding">Holding:</span>
+          <strong id="holding-name" class="text-white ms-1">Organic Milk</strong>
+          <span id="holding-qty" class="ms-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-xs">x12</span>
+        </div>
+        <button onclick="Player.dropHolding()" class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/40 text-xs font-bold" data-i18n="store_back">
+          Store in Warehouse
+        </button>
+      </div>
+
+      <!-- Mobile Touch Controls Row (Shown on Touch / Small Screens or Toggle) -->
+      <div id="mobile-controls" class="flex items-end justify-between px-2 pb-1 md:hidden pointer-events-none">
+        <!-- Virtual Move Pad -->
+        <div id="touch-joystick-zone" class="w-28 h-28 rounded-full glass-panel border border-white/20 relative pointer-events-auto flex items-center justify-center">
+          <div id="touch-joystick-knob" class="w-11 h-11 rounded-full bg-sky-400/60 border-2 border-white shadow-lg"></div>
+        </div>
+
+        <!-- Mobile Action Buttons -->
+        <div class="flex flex-col gap-2 pointer-events-auto">
+          <button onclick="Player.triggerInteract()" class="w-14 h-14 rounded-2xl btn-aaa flex flex-col items-center justify-center text-white font-bold text-xs shadow-xl">
+            <i class="fa-solid fa-hand-pointer text-base mb-0.5"></i>
+            <span data-i18n="act_btn">ACT</span>
+          </button>
+          <button onclick="Player.cleanFloorAction()" class="w-14 h-12 rounded-2xl btn-emerald flex flex-col items-center justify-center text-white font-bold text-[11px] shadow-xl">
+            <i class="fa-solid fa-broom text-sm"></i>
+            <span data-i18n="mop_btn">MOP</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Management Dock -->
+      <div class="self-center glass-panel rounded-2xl p-1.5 flex items-center gap-1.5 md:gap-2 overflow-x-auto max-w-full pointer-events-auto">
+        <button onclick="UI.openTablet('market')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-truck-ramp-box text-sky-400"></i>
+          <span data-i18n="nav_supplier">Supplier Market</span>
+        </button>
+        <button onclick="UI.openTablet('warehouse')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-boxes-stacked text-amber-400"></i>
+          <span data-i18n="nav_warehouse">Warehouse & Pricing</span>
+        </button>
+        <button onclick="UI.openTablet('staff')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-id-badge text-purple-400"></i>
+          <span data-i18n="nav_staff">Employees</span>
+        </button>
+        <button onclick="UI.openTablet('finance')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-chart-line text-emerald-400"></i>
+          <span data-i18n="nav_finance">Finances</span>
+        </button>
+        <button onclick="UI.openTablet('expand')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-up-right-and-down-left-from-center text-rose-400"></i>
+          <span data-i18n="nav_expand">Expand & Decor</span>
+        </button>
+        <button onclick="UI.openTablet('missions')" class="px-3 py-2 rounded-xl hover:bg-sky-500/20 text-slate-200 hover:text-sky-300 flex items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-list-check text-teal-400"></i>
+          <span data-i18n="nav_missions">Missions</span>
+        </button>
+        <button onclick="Player.cleanFloorAction()" class="hidden md:flex px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/30 text-emerald-300 items-center gap-2 text-xs md:text-sm font-semibold transition whitespace-nowrap">
+          <i class="fa-solid fa-broom"></i>
+          <span data-i18n="nav_clean">Clean Floor</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MANAGEMENT TABLET MODAL ==================== -->
+  <div id="tablet-modal" class="hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-2 md:p-6">
+    <div class="glass-panel w-full max-w-6xl h-[90vh] rounded-3xl flex flex-col overflow-hidden">
+      <!-- Tablet Header -->
+      <div class="px-5 py-4 border-b border-slate-700/70 flex items-center justify-between bg-slate-900/60">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 text-lg">
+            <i class="fa-solid fa-tablet-screen-button"></i>
+          </div>
+          <div>
+            <h2 class="text-lg md:text-xl font-extrabold text-white" data-i18n="tablet_title">ELITE STORE OS v4.2</h2>
+            <p class="text-xs text-slate-400" data-i18n="tablet_sub">Enterprise Retail Resource & Operations Terminal</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-end hidden sm:block">
+            <div class="text-[10px] text-slate-400 uppercase" data-i18n="available_funds">Available Funds</div>
+            <div id="tablet-balance" class="text-base font-extrabold text-emerald-400">$2,500.00</div>
+          </div>
+          <button onclick="UI.closeTablet()" class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500 hover:text-white flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tablet Navigation Tabs -->
+      <div class="px-5 py-2.5 bg-slate-900/40 border-b border-slate-800 flex gap-2 overflow-x-auto">
+        <button onclick="UI.switchTab('market')" id="tab-btn-market" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold bg-sky-500 text-white whitespace-nowrap" data-i18n="nav_supplier">Supplier Market</button>
+        <button onclick="UI.switchTab('warehouse')" id="tab-btn-warehouse" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap" data-i18n="nav_warehouse">Warehouse & Pricing</button>
+        <button onclick="UI.switchTab('staff')" id="tab-btn-staff" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap" data-i18n="nav_staff">Employees</button>
+        <button onclick="UI.switchTab('finance')" id="tab-btn-finance" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap" data-i18n="nav_finance">Finances</button>
+        <button onclick="UI.switchTab('expand')" id="tab-btn-expand" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap" data-i18n="nav_expand">Expand & Decor</button>
+        <button onclick="UI.switchTab('missions')" id="tab-btn-missions" class="tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap" data-i18n="nav_missions">Missions</button>
+      </div>
+
+      <!-- Tablet Dynamic Body -->
+      <div id="tablet-content" class="flex-1 overflow-y-auto p-4 md:p-6"></div>
+    </div>
+  </div>
+
+  <!-- ==================== INTERACTIVE CHECKOUT POS MODAL ==================== -->
+  <div id="checkout-modal" class="hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="glass-panel w-full max-w-2xl rounded-3xl overflow-hidden border border-sky-400/30">
+      <div class="px-6 py-4 bg-slate-900/80 border-b border-slate-700 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-cash-register"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-extrabold text-white" data-i18n="pos_title">POS Checkout Terminal #1</h3>
+            <p id="pos-customer-info" class="text-xs text-slate-400">Customer: Regular Shopper</p>
+          </div>
+        </div>
+        <button onclick="CheckoutSystem.closePOS()" class="w-9 h-9 rounded-xl bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <!-- Scanned Receipt Area -->
+        <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 h-48 overflow-y-auto font-mono text-xs space-y-1.5" id="pos-receipt-list">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Conveyor Belt Unscanned Items -->
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span data-i18n="pos_belt_hint">Click items on the belt to scan barcode:</span>
+            <span id="pos-scan-count" class="text-sky-400 font-bold">0 / 0 Scanned</span>
+          </div>
+          <div id="pos-belt-items" class="flex flex-wrap gap-2 min-h-[56px] p-3 rounded-2xl bg-slate-900/60 border border-slate-700/60">
+            <!-- Clickable items -->
+          </div>
+        </div>
+
+        <!-- Payment & Totals -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2 border-t border-slate-800">
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span data-i18n="pos_subtotal">Subtotal:</span>
+              <span id="pos-total" class="text-lg font-extrabold text-emerald-400">$0.00</span>
+            </div>
+            <div class="flex justify-between text-xs text-slate-400">
+              <span data-i18n="pos_payment_type">Payment Method:</span>
+              <span id="pos-pay-method" class="font-bold text-sky-300">CARD / DIGITAL</span>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <button id="btn-pos-scan-all" onclick="CheckoutSystem.scanAllItems()" class="btn-aaa py-2.5 px-4 rounded-xl font-bold text-xs text-white">
+              <i class="fa-solid fa-barcode me-1.5"></i><span data-i18n="pos_quick_scan">Rapid Laser Scan All</span>
+            </button>
+            <button id="btn-pos-complete" onclick="CheckoutSystem.completeTransaction()" disabled class="btn-emerald py-3 px-4 rounded-xl font-extrabold text-sm text-white">
+              <i class="fa-solid fa-check-circle me-1.5"></i><span data-i18n="pos_approve">Approve Payment & Print Receipt</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SAVE SLOTS MODAL ==================== -->
+  <div id="modal-saves" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-xl rounded-3xl p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-xl font-extrabold text-white" data-i18n="load_save_game">Save / Load Slots</h3>
+        <button onclick="UI.closeModal('modal-saves')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <div id="save-slots-list" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ==================== SETTINGS MODAL ==================== -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-3xl p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-xl font-extrabold text-white" data-i18n="settings">Settings & Controls</h3>
+        <button onclick="UI.closeModal('modal-settings')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1.5" data-i18n="language_label">Language / اللغة</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="Game.setLanguage('en')" class="py-2.5 rounded-xl border border-sky-400/50 bg-sky-500/20 font-bold text-white">English (LTR)</button>
+            <button onclick="Game.setLanguage('ar')" class="py-2.5 rounded-xl border border-emerald-400/50 bg-emerald-500/20 font-bold text-white">العربية (RTL)</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1" data-i18n="graphics_quality">Graphics Quality</label>
+          <select id="setting-graphics" onchange="Game.applySettings()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white">
+            <option value="high">Ultra / High (Shadows + Reflections)</option>
+            <option value="medium" selected>Medium (Balanced)</option>
+            <option value="low">Mobile Performance (Fast FPS)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1" data-i18n="sound_fx">Sound Effects & Synth Audio</label>
+          <select id="setting-audio" onchange="Game.applySettings()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white">
+            <option value="on" selected>Enabled (WebAudio Synth)</option>
+            <option value="off">Muted</option>
+          </select>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-1">
+          <div class="font-bold text-sky-400 mb-1" data-i18n="controls_guide">Controls:</div>
+          <p>• <strong>PC:</strong> WASD / Arrows to Move, Click & Drag Mouse to Look, <strong>E</strong> to Interact, <strong>C</strong> to Mop Floor.</p>
+          <p>• <strong>Mobile / Tablet:</strong> Left Virtual Joystick to Walk, Drag Right Screen to Look, Tap <strong>ACT</strong> button to Stock/Scan.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CREDITS & GUIDE MODAL ==================== -->
+  <div id="modal-credits" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-3xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-xl font-extrabold text-white" data-i18n="credits">Credits & Gameplay Loop</h3>
+        <button onclick="UI.closeModal('modal-credits')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <div class="text-xs md:text-sm text-slate-300 space-y-2.5 leading-relaxed">
+        <p><strong class="text-sky-400">Supermarket Elite</strong> is a complete 3D retail management simulation built with Three.js, procedural PBR textures, and real-time AI simulation.</p>
+        <p><strong>1. Order Stock:</strong> Open the <em>Supplier Market</em> to order from 216 distinct products across 12 departments.</p>
+        <p><strong>2. Stock Shelves:</strong> Pick up crates from your <em>Warehouse</em> or directly from the Warehouse Pallet, walk to any 3D shelf, and press <strong>E / ACT</strong>.</p>
+        <p><strong>3. Open Store & Checkout:</strong> Click <em>CLOSED -> OPEN</em> at the top right. Shoppers will browse, pick items, and queue at the checkout counter. Interact with the register or hire a Cashier!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== GAME SCRIPT ==================== -->
+  <script>
+    /**
+     * ============================================================================
+     * SUPERMARKET ELITE - MODULAR AAA WEBGL ARCHITECTURE
+     * ============================================================================
+     * Modules:
+     * 1. Localization (EN & AR with full RTL layout support)
+     * 2. SoundEngine (Procedural Web Audio / Tone.js synthesizer)
+     * 3. ProductDatabase (216 unique products across 12 categories)
+     * 4. Economy & MissionSystem (Daily P&L, Rent, Electricity, Quests, Badges)
+     * 5. World3D (Three.js store, shelves, coolers, warehouse, checkout, lighting)
+     * 6. CustomerAI & EmployeeAI (State machines, pathing, personality reactions)
+     * 7. CheckoutSystem (Interactive POS barcode scanner & receipt printer)
+     * 8. SaveSystem & UI Controller
+     */
+
+    // ==================== 1. LOCALIZATION SYSTEM ====================
+    const I18N = {
+      en: {
+        edition_tag: "AAA RETAIL TYCOON SIMULATION",
+        menu_subtitle: "Build your retail empire from a neighborhood corner shop into an international megastore. Manage 200+ products, dynamic AI shoppers, checkout counters, staff, and finances in full 3D.",
+        new_game: "New Game",
+        continue_game: "Continue",
+        load_save_game: "Save / Load Slots",
+        settings: "Settings & Controls",
+        credits: "Credits & Guide",
+        hud_balance: "Balance",
+        hud_level: "Store Lv.",
+        hud_rating: "Rating",
+        hud_shoppers: "Shoppers",
+        hud_cleanliness: "Cleanliness",
+        store_closed: "CLOSED",
+        store_open: "OPEN",
+        active_quest: "Active Quest",
+        view_all: "View All",
+        holding: "Holding:",
+        store_back: "Return to Warehouse",
+        act_btn: "ACT",
+        mop_btn: "MOP",
+        nav_supplier: "Supplier Market",
+        nav_warehouse: "Warehouse & Pricing",
+        nav_staff: "Employees",
+        nav_finance: "Finances",
+        nav_expand: "Expand & Decor",
+        nav_missions: "Missions",
+        nav_clean: "Clean Floor",
+        tablet_title: "ELITE STORE OS v4.2",
+        tablet_sub: "Enterprise Retail Resource & Operations Terminal",
+        available_funds: "Available Funds",
+        pos_title: "POS Checkout Terminal",
+        pos_belt_hint: "Click items on the belt to scan barcode:",
+        pos_subtotal: "Total Due:",
+        pos_payment_type: "Payment Method:",
+        pos_quick_scan: "Rapid Laser Scan All",
+        pos_approve: "Approve Payment & Print Receipt",
+        language_label: "Language / اللغة",
+        graphics_quality: "Graphics Quality",
+        sound_fx: "Sound Effects & Synth Audio",
+        controls_guide: "Controls Guide:",
+        interact_stock: "Stock Shelf with",
+        interact_take_shelf: "Inspect / Restock Shelf",
+        interact_checkout: "Operate Cash Register",
+        interact_warehouse: "Pick Box from Warehouse",
+        interact_door: "Toggle Store Open/Closed",
+        msg_opened: "Supermarket is now OPEN for business!",
+        msg_closed: "Supermarket is now CLOSED.",
+        msg_no_funds: "Insufficient funds for this transaction!",
+        msg_ordered: "Ordered crate delivered to warehouse:",
+        msg_stocked: "Stocked items onto display shelf!",
+        msg_cleaned: "Floor cleaned and sanitized! (+Rating)",
+        msg_mission_done: "MISSION COMPLETED! Reward claimed:",
+        msg_saved: "Game saved successfully to slot",
+        msg_loaded: "Save slot loaded!",
+        cat_all: "All Categories",
+        cat_groceries: "Groceries",
+        cat_produce: "Fruits & Veg",
+        cat_drinks: "Beverages",
+        cat_dairy: "Dairy",
+        cat_meat: "Meat & Poultry",
+        cat_frozen: "Frozen Food",
+        cat_bakery: "Bakery",
+        cat_snacks: "Snacks & Sweets",
+        cat_household: "Household",
+        cat_personal: "Personal Care",
+        cat_electronics: "Electronics",
+        cat_toys: "Toys"
+      },
+      ar: {
+        edition_tag: "محاكاة إدارة السوبر ماركت الاحترافية",
+        menu_subtitle: "ابنِ إمبراطوريتك التجارية من متجر صغير إلى سلسلة متاجر عالمية. أدر أكثر من 200 منتج، والذكاء الاصطناعي للزبائن، والكاشير، والموظفين، والمالية في عالم ثلاثي الأبعاد.",
+        new_game: "لعبة جديدة",
+        continue_game: "متابعة اللعب",
+        load_save_game: "حفظ وتحميل اللعبة",
+        settings: "الإعدادات والتحكم",
+        credits: "دليل اللعب والحقوق",
+        hud_balance: "الرصيد",
+        hud_level: "مستوى المتجر",
+        hud_rating: "التقييم",
+        hud_shoppers: "المتسوقون",
+        hud_cleanliness: "النظافة",
+        store_closed: "مغلق",
+        store_open: "مفتوح",
+        active_quest: "المهمة الحالية",
+        view_all: "عرض الكل",
+        holding: "تحمل الآن:",
+        store_back: "إرجاع للمستودع",
+        act_btn: "تفاعل",
+        mop_btn: "تنظيف",
+        nav_supplier: "سوق الموردين",
+        nav_warehouse: "المستودع والأسعار",
+        nav_staff: "الموظفون",
+        nav_finance: "المالية والأرباح",
+        nav_expand: "التوسعة والديكور",
+        nav_missions: "المهام والإنجازات",
+        nav_clean: "تنظيف الأرضية",
+        tablet_title: "نظام إدارة السوبر ماركت الذكي",
+        tablet_sub: "محطة التحكم بالمخزون والمبيعات والموظفين",
+        available_funds: "الرصيد المتاح",
+        pos_title: "نقطة البيع والكاشير",
+        pos_belt_hint: "اضغط على المنتجات لمسح الباركود:",
+        pos_subtotal: "الإجمالي المطلوب:",
+        pos_payment_type: "طريقة الدفع:",
+        pos_quick_scan: "مسح سريع لجميع المنتجات",
+        pos_approve: "تأكيد الدفع وطباعة الفاتورة",
+        language_label: "اللغة / Language",
+        graphics_quality: "جودة الرسوميات",
+        sound_fx: "المؤثرات الصوتية",
+        controls_guide: "دليل التحكم:",
+        interact_stock: "تعبئة الرف بـ",
+        interact_take_shelf: "فحص / تعبئة الرف",
+        interact_checkout: "تشغيل جهاز الكاشير",
+        interact_warehouse: "أخذ صندوق من المستودع",
+        interact_door: "فتح / إغلاق المتجر",
+        msg_opened: "السوبر ماركت مفتوح الآن لاستقبال الزبائن!",
+        msg_closed: "تم إغلاق السوبر ماركت.",
+        msg_no_funds: "الرصيد غير كافٍ لإتمام العملية!",
+        msg_ordered: "تم توصيل البضاعة إلى المستودع:",
+        msg_stocked: "تم ترتيب المنتجات على الرف بنجاح!",
+        msg_cleaned: "تم تنظيف الأرضية وتعقيمها! (+تقييم)",
+        msg_mission_done: "تم إنجاز المهمة! المكافأة:",
+        msg_saved: "تم حفظ اللعبة في الخانة رقم",
+        msg_loaded: "تم تحميل اللعبة بنجاح!",
+        cat_all: "جميع الأقسام",
+        cat_groceries: "البقالة والمعلبات",
+        cat_produce: "الفواكه والخضروات",
+        cat_drinks: "المشروبات والعصائر",
+        cat_dairy: "الألبان والأجبان",
+        cat_meat: "اللحوم والدواجن",
+        cat_frozen: "المجمدات",
+        cat_bakery: "المخبوزات",
+        cat_snacks: "الوجبات الخفيفة والحلويات",
+        cat_household: "المنظفات والأدوات المنزلية",
+        cat_personal: "العناية الشخصية",
+        cat_electronics: "الإلكترونيات",
+        cat_toys: "الألعاب"
+      }
+    };
+
+    // ==================== 2. PROCEDURAL SOUND ENGINE ====================
+    const SoundEngine = {
+      enabled: true,
+      initialized: false,
+      synth: null,
+      init() {
+        if (this.initialized) return;
+        try {
+          if (window.Tone) {
+            this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            this.synth.volume.value = -12;
+          }
+          this.initialized = true;
+        } catch (e) { /* Silent fallback */ }
+      },
+      playBeep() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          if (this.synth) this.synth.triggerAttackRelease("C6", "32n");
+        } catch (e) {}
+      },
+      playCash() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          if (this.synth) {
+            this.synth.triggerAttackRelease("E5", "16n");
+            setTimeout(() => this.synth.triggerAttackRelease("B5", "8n"), 80);
+          }
+        } catch (e) {}
+      },
+      playPop() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          if (this.synth) this.synth.triggerAttackRelease("G4", "32n");
+        } catch (e) {}
+      },
+      playSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          if (this.synth) {
+            this.synth.triggerAttackRelease(["C5", "E5", "G5"], "8n");
+          }
+        } catch (e) {}
+      }
+    };
+
+    // ==================== 3. PRODUCT DATABASE (216 ITEMS) ====================
+    const CATEGORIES = [
+      { id: 'groceries', key: 'cat_groceries', color: '#f59e0b', icon: 'fa-wheat-awn' },
+      { id: 'produce', key: 'cat_produce', color: '#22c55e', icon: 'fa-apple-whole' },
+      { id: 'drinks', key: 'cat_drinks', color: '#38bdf8', icon: 'fa-bottle-water' },
+      { id: 'dairy', key: 'cat_dairy', color: '#f8fafc', icon: 'fa-cheese' },
+      { id: 'meat', key: 'cat_meat', color: '#ef4444', icon: 'fa-drumstick-bite' },
+      { id: 'frozen', key: 'cat_frozen', color: '#06b6d4', icon: 'fa-snowflake' },
+      { id: 'bakery', key: 'cat_bakery', color: '#d97706', icon: 'fa-bread-slice' },
+      { id: 'snacks', key: 'cat_snacks', color: '#ec4899', icon: 'fa-cookie-bite' },
+      { id: 'household', key: 'cat_household', color: '#8b5cf6', icon: 'fa-spray-can-sparkles' },
+      { id: 'personal', key: 'cat_personal', color: '#14b8a6', icon: 'fa-pump-soap' },
+      { id: 'electronics', key: 'cat_electronics', color: '#6366f1', icon: 'fa-headphones' },
+      { id: 'toys', key: 'cat_toys', color: '#f43f5e', icon: 'fa-gamepad' }
+    ];
+
+    const PRODUCT_DATABASE = (() => {
+      const templates = {
+        groceries: [
+          ['Basmati Rice 5kg', 'أرز بسمتي 5 كجم', 6.5, 9.99],
+          ['Extra Virgin Olive Oil', 'زيت زيتون بكر ممتاز', 7.0, 11.50],
+          ['Italian Spaghetti Pasta', 'مكرونة إسباجيتي إيطالي', 1.1, 2.25],
+          ['Organic Tomato Sauce', 'صلصة طماطم عضوية', 1.3, 2.50],
+          ['Whole Wheat Flour 2kg', 'دقيق قمح كامل 2 كجم', 1.8, 3.20],
+          ['Wildflower Honey Jar', 'عسل زهور طبيعي', 4.5, 7.99],
+          ['Canned Tuna Chunks', 'تونة قطع فاخرة', 1.5, 2.80],
+          ['Red Lentils 1kg', 'عدس أحمر 1 كجم', 1.4, 2.60],
+          ['Roasted Peanut Butter', 'زبدة فول سوداني', 2.4, 4.25],
+          ['Sea Salt Grinder', 'ملح بحري خشن', 1.2, 2.40],
+          ['Black Peppercorns', 'فلفل أسود حب', 1.9, 3.50],
+          ['Cereal Oats Box', 'شوفان حبوب كاملة', 2.2, 3.99],
+          ['Strawberry Jam', 'مربى فراولة طبيعية', 1.8, 3.30],
+          ['Chicken Bouillon Cubes', 'مكعبات مرقة دجاج', 0.9, 1.80],
+          ['White Sugar 2kg', 'سكر أبيض 2 كجم', 1.7, 2.95],
+          ['Chickpeas Cans', 'حمص معلب جاهز', 0.8, 1.65],
+          ['Balsamic Vinegar', 'خل بلسميك فاخر', 2.8, 4.90],
+          ['Quinoa Supergrain', 'حبوب الكينوا العضوية', 3.6, 6.20]
+        ],
+        produce: [
+          ['Red Gala Apples (1kg)', 'تفاح أحمر جالا', 1.4, 2.60],
+          ['Cavendish Bananas (1kg)', 'موز طازج', 1.0, 1.95],
+          ['Navel Oranges (1kg)', 'برتقال أبو سرة', 1.2, 2.30],
+          ['Vine Tomatoes (1kg)', 'طماطم بلدي طازجة', 1.1, 2.10],
+          ['Baby Spinach Pack', 'سبانخ طازجة', 1.5, 2.80],
+          ['Hass Avocados (3pc)', 'أفوكادو هاس', 2.8, 4.99],
+          ['Sweet Strawberries', 'فراولة طازجة', 2.1, 3.80],
+          ['Russet Potatoes (2kg)', 'بطاطس للتحمير 2 كجم', 1.5, 2.75],
+          ['Red Onions (1kg)', 'بصل أحمر 1 كجم', 0.9, 1.75],
+          ['Crunchy Carrots (1kg)', 'جزر طازج 1 كجم', 0.95, 1.85],
+          ['Seedless Green Grapes', 'عنب أخضر بدون بذر', 2.3, 4.10],
+          ['Fresh Cucumber (1kg)', 'خيار طازج 1 كجم', 1.0, 1.90],
+          ['Bell Peppers Mix', 'فلفل ألوان مشكل', 1.9, 3.40],
+          ['Fresh Broccoli Crown', 'بروكلي طازج', 1.6, 2.95],
+          ['Alphonso Mango', 'مانجو ألفونسو', 2.5, 4.50],
+          ['Watermelon Whole', 'بطيخ أحمر كامل', 3.0, 5.50],
+          ['Fresh Garlic Bulbs', 'ثوم بلدي طازج', 1.2, 2.25],
+          ['Organic Blueberries', 'توت أزرق عضوي', 2.9, 5.20]
+        ],
+        drinks: [
+          ['Mineral Water 6-Pack', 'مياه معدنية 6 عبوات', 1.6, 3.10],
+          ['Fresh Orange Juice 1L', 'عصير برتقال طبيعي 1 لتر', 1.8, 3.40],
+          ['Sparkling Cola 6-Pack', 'مشروب كولا غازي 6 عبوات', 2.5, 4.50],
+          ['Arabica Roast Coffee', 'قهوة أرابيكا محمصة', 5.2, 8.99],
+          ['Green Tea 50 Bags', 'شاي أخضر 50 كيس', 2.1, 3.80],
+          ['Energy Drink Can', 'مشروب طاقة', 1.1, 2.20],
+          ['Apple Nectar 1L', 'عصير تفاح 1 لتر', 1.5, 2.85],
+          ['Iced Peach Tea', 'شاي مثلج بالخوخ', 1.2, 2.30],
+          ['Sparkling Lemon Water', 'مياه فوارة بالليمون', 1.3, 2.50],
+          ['Almond Barista Milk', 'حليب لوز للقهوة', 2.4, 4.20],
+          ['Mango Nectar Carton', 'عصير مانجو 1 لتر', 1.6, 2.95],
+          ['Espresso Capsules', 'كبسولات إسبريسو', 4.0, 6.99],
+          ['Electrolyte Sports Drink', 'مشروب رياضي', 1.3, 2.45],
+          ['Pomegranate Juice', 'عصير رمان طبيعي', 2.2, 3.99],
+          ['Hot Cocoa Mix', 'مسحوق كاكاو ساخن', 2.3, 4.15],
+          ['Ginger Ale 4-Pack', 'مشروب زنجبيل فوار', 2.4, 4.30],
+          ['Coconut Water 500ml', 'ماء جوز الهند', 1.7, 3.15],
+          ['English Breakfast Tea', 'شاي إفطار إنجليزي', 2.6, 4.60]
+        ],
+        dairy: [
+          ['Fresh Whole Milk 1L', 'حليب طازج كامل الدسم 1 لتر', 1.1, 2.15],
+          ['Aged Cheddar Block', 'جبن شيدر معتق', 3.2, 5.60],
+          ['Greek Yogurt 500g', 'زبادي يوناني 500 جم', 2.0, 3.65],
+          ['Unsalted Butter 250g', 'زبدة طبيعية غير مملحة', 2.1, 3.80],
+          ['Free-Range Eggs (12pc)', 'بيض بلدي 12 بيضة', 2.4, 4.30],
+          ['Mozzarella Shredded', 'جبن موتزاريلا مبشور', 2.8, 4.95],
+          ['White Feta Cheese', 'جبن فيتا أبيض', 2.2, 3.95],
+          ['Heavy Whipping Cream', 'كريمة خفق طازجة', 2.3, 4.10],
+          ['Labneh Kefir Jar', 'لبنة طازجة', 2.5, 4.40],
+          ['Parmesan Wedge', 'جبن بارميزان إيطالي', 4.2, 7.40],
+          ['Chocolate Milk Bottle', 'حليب بالشوكولاتة', 1.2, 2.25],
+          ['Cream Cheese Spread', 'جبن كريمي قابل للدهن', 1.9, 3.45],
+          ['Sour Cream Tub', 'قشطة حامضة', 1.7, 3.10],
+          ['Gouda Cheese Slices', 'شرائح جبن جودة', 2.7, 4.80],
+          ['Strawberry Yogurt 4pk', 'زبادي بالفراولة 4 عبوات', 1.8, 3.30],
+          ['Halloumi Grilling Cheese', 'جبن حلوم للشواء', 3.4, 5.99],
+          ['Condensed Sweet Milk', 'حليب مكثف محلى', 1.5, 2.75],
+          ['Organic Skim Milk 1L', 'حليب عضوي خالي الدسم', 1.3, 2.45]
+        ],
+        meat: [
+          ['Chicken Breast Fillets', 'صدور دجاج فيليه طازجة', 4.5, 7.80],
+          ['Prime Beef Ribeye Steak', 'ستيك لحم بقري فاخر', 9.5, 15.99],
+          ['Lean Minced Beef 500g', 'لحم بقري مفروم 500 جم', 4.2, 7.25],
+          ['Whole Roasting Chicken', 'دجاجة كاملة طازجة', 5.0, 8.50],
+          ['Lamb Chops Pack', 'ريش ضاني طازجة', 8.8, 14.90],
+          ['Turkey Breast Slices', 'شرائح صدر ديك رومي', 3.6, 6.30],
+          ['Beef Burger Patties 4pc', 'برجر لحم بقري 4 قطع', 4.4, 7.60],
+          ['Chicken Wings 1kg', 'أجنحة دجاج 1 كجم', 3.2, 5.60],
+          ['Atlantic Salmon Fillet', 'فيليه سلمون أطلسي', 8.5, 14.50],
+          ['Beef Sausages Pack', 'سجق لحم بقري', 3.8, 6.65],
+          ['Chicken Drumsticks 1kg', 'دبابيس دجاج 1 كجم', 3.1, 5.40],
+          ['Smoked Beef Pastrami', 'بسطرمة لحم مدخن', 4.6, 7.99],
+          ['Fresh Jumbo Shrimp', 'جمبري جامبو طازج', 9.2, 15.50],
+          ['Beef Tenderloin Roast', 'عرق فلتو بقري', 11.0, 18.50],
+          ['Marinated Shish Tawook', 'شيش طاووق متبل', 4.8, 8.20],
+          ['Duck Breast Fillet', 'صدور بط طازجة', 7.9, 13.50],
+          ['Veal Escalope Slices', 'إسكالوب بتلو', 7.5, 12.80],
+          ['Chicken Shawarma Strips', 'شرائح شاورما دجاج', 4.3, 7.45]
+        ],
+        frozen: [
+          ['Pepperoni Frozen Pizza', 'بيتزا بيبروني مجمدة', 3.5, 6.20],
+          ['Vanilla Bean Ice Cream', 'آيس كريم فانيليا 1 لتر', 3.2, 5.75],
+          ['Crispy French Fries 1kg', 'بطاطس مقلية مجمدة 1 كجم', 2.1, 3.85],
+          ['Frozen Green Peas 500g', 'بازلاء خضراء مجمدة', 1.3, 2.40],
+          ['Chicken Nuggets Box', 'ناجتس دجاج مقرمش', 3.4, 5.99],
+          ['Frozen Mixed Berries', 'توت مشكل مجمد', 2.9, 5.10],
+          ['Beef Lasagna Tray', 'لازانيا باللحم جاهزة', 4.1, 7.20],
+          ['Chocolate Gelato Tub', 'جيلاتو شوكولاتة داكنة', 3.6, 6.40],
+          ['Frozen Sweet Corn', 'ذرة حلوة مجمدة', 1.4, 2.55],
+          ['Fish Fingers 12-Pack', 'أصابع سمك مقرمشة', 3.1, 5.50],
+          ['Cheese Sambousek 24pc', 'سمبوسك بالجبن 24 قطعة', 2.8, 4.95],
+          ['Frozen Puff Pastry', 'عجينة باف باستري مجمدة', 1.9, 3.45],
+          ['Ice Cream Cones 6pk', 'أقماع آيس كريم 6 قطع', 3.3, 5.85],
+          ['Frozen Broccoli Florets', 'زهرات بروكلي مجمدة', 1.5, 2.75],
+          ['Mozzarella Sticks', 'أصابع موتزاريلا مقرمشة', 3.2, 5.65],
+          ['Frozen Croissant Dough', 'عجينة كرواسون مجمدة', 2.7, 4.80],
+          ['Mango Sorbet Pint', 'سوربيه مانجو منعش', 3.0, 5.30],
+          ['Vegetable Spring Rolls', 'سبرينج رولز خضار', 2.5, 4.45]
+        ],
+        bakery: [
+          ['Artisan Sourdough Loaf', 'خبز سوردو حرفي طازج', 2.0, 3.75],
+          ['Butter Croissants 4pc', 'كرواسون بالزبدة 4 قطع', 2.4, 4.30],
+          ['French Baguette', 'خبز باجيت فرنسي', 1.1, 2.10],
+          ['Whole Grain Toast', 'توست حبوب كاملة', 1.5, 2.80],
+          ['Chocolate Chip Muffins', 'مافن رقائق الشوكولاتة', 2.3, 4.15],
+          ['Cinnamon Rolls 4-Pack', 'لفائف القرفة 4 قطع', 2.8, 4.95],
+          ['Arabic Pita Bread Pack', 'خبز عربي طازج', 0.8, 1.50],
+          ['Glazed Donuts Box', 'دوناتس محلى 6 قطع', 3.0, 5.40],
+          ['Brioche Burger Buns', 'خبز برجر بريوش', 1.8, 3.25],
+          ['Sesame Bagels 5-Pack', 'بيجل بالسمسم 5 قطع', 2.1, 3.80],
+          ['Apple Cinnamon Pie', 'فطيرة تفاح بالقرفة', 3.8, 6.75],
+          ['Garlic Herb Focaccia', 'خبز فوكاشيا بالثوم', 2.2, 3.95],
+          ['Pain au Chocolat 4pc', 'باتيه بالشوكولاتة', 2.6, 4.65],
+          ['Multigrain Rolls 6pc', 'خبز صغير متعدد الحبوب', 1.7, 3.10],
+          ['Red Velvet Cupcakes', 'كب كيك ريد فيلفيت', 3.2, 5.75],
+          ['Baklava Assortment Box', 'علبة بقلاوة فاخرة', 5.5, 9.50],
+          ['Oatmeal Raisin Cookies', 'كوكيز الشوفان والزبيب', 2.0, 3.60],
+          ['Cheese Manakish 3pc', 'مناقيش بالجبن 3 قطع', 2.3, 4.10]
+        ],
+        snacks: [
+          ['Sea Salt Potato Chips', 'رقائق بطاطس بالملح البحري', 1.2, 2.30],
+          ['70% Dark Chocolate Bar', 'لوح شوكولاتة داكنة 70%', 1.8, 3.35],
+          ['Roasted Mixed Nuts', 'مكسرات مشكلة محمصة', 3.9, 6.90],
+          ['Salted Pretzel Twists', 'بريتزل مملح مقرمش', 1.4, 2.60],
+          ['Gummy Fruit Bears', 'حلوى جيلي فواكه', 1.1, 2.15],
+          ['Caramel Popcorn Tub', 'فشار بالكراميل', 1.7, 3.10],
+          ['Hazelnut Wafer Pack', 'ويفر بالبندق مقرمش', 1.3, 2.45],
+          ['Milk Chocolate Truffles', 'ترافل شوكولاتة بالحليب', 3.5, 6.25],
+          ['Nacho Cheese Tortillas', 'رقائق تورتيلا بالجبن', 1.5, 2.80],
+          ['Pistachio Salted 250g', 'فستق محمص ومملح', 4.6, 7.99],
+          ['Granola Energy Bars 6pk', 'ألواح جرانولا للطاقة', 2.5, 4.45],
+          ['Butter Biscuits Tin', 'علبة بسكويت بالزبدة', 2.8, 4.95],
+          ['Sour Worms Candy', 'حلوى حامضة ملونة', 1.2, 2.25],
+          ['Trail Mix Berry & Nut', 'خليط مكسرات وتوت مجفف', 2.9, 5.15],
+          ['Marshmallow Fluffy Bag', 'مارشميلو طري', 1.3, 2.40],
+          ['Protein Chocolate Bar', 'لوح بروتين بالشوكولاتة', 1.6, 2.95],
+          ['Almond Biscotti Pack', 'بسكوتي باللوز', 2.4, 4.30],
+          ['Medjool Dates Luxury Box', 'تمر مجدول فاخر', 4.8, 8.50]
+        ],
+        household: [
+          ['Liquid Laundry Detergent', 'مسحوق غسيل سائل 3 لتر', 5.2, 8.99],
+          ['Lemon Dishwashing Liquid', 'سائل جلي برائحة الليمون', 1.6, 2.95],
+          ['3-Ply Toilet Paper 12pk', 'ورق تواليت 12 رول', 4.0, 6.99],
+          ['Multi-Surface Cleaner', 'منظف متعدد الأسطح', 2.1, 3.80],
+          ['Heavy Duty Trash Bags', 'أكياس قمامة متينة', 2.3, 4.15],
+          ['Paper Kitchen Towels 4pk', 'مناشف مطبخ ورقية 4 رول', 2.6, 4.65],
+          ['Glass & Window Spray', 'ملمع زجاج ومرايا', 1.8, 3.25],
+          ['Fabric Softener Lavender', 'منعم أقمشة باللافندر', 2.9, 5.15],
+          ['Aluminum Foil Roll 30m', 'رقائق ألومنيوم 30 متر', 2.4, 4.30],
+          ['Dishwasher Pods 30ct', 'أقراص غسالة أطباق', 5.8, 9.99],
+          ['Microfiber Cleaning Cloths', 'فوط تنظيف مايكروفايبر', 2.2, 3.95],
+          ['Antibacterial Floor Wash', 'مطهر أرضيات مركز', 2.5, 4.45],
+          ['Scented Soy Candle', 'شمعة معطرة فاخرة', 3.4, 5.99],
+          ['LED Energy Bulbs 4-Pack', 'مصابيح LED موفرة 4 قطع', 3.8, 6.75],
+          ['AA Alkaline Batteries 8pk', 'بطاريات قلم AA 8 قطع', 3.1, 5.50],
+          ['Kitchen Sponges 6-Pack', 'إسفنج جلي 6 قطع', 1.2, 2.25],
+          ['Air Freshener Mist', 'معطر جو منعش', 2.0, 3.60],
+          ['Food Storage Containers', 'علب حفظ طعام محكمة', 4.2, 7.40]
+        ],
+        personal: [
+          ['Argan Oil Shampoo 400ml', 'شامبو بزيت الأرجان', 3.2, 5.75],
+          ['Whitening Toothpaste', 'معجون أسنان مبيض', 1.6, 2.95],
+          ['Moisturizing Body Wash', 'غسول جسم مرطب', 2.7, 4.85],
+          ['Sensitive Skin Face Cream', 'كريم وجه للبشرة الحساسة', 4.8, 8.50],
+          ['48h Fresh Deodorant', 'مزيل عرق حماية 48 ساعة', 2.1, 3.80],
+          ['Bamboo Toothbrush 2-Pack', 'فرشاة أسنان خيزران قطعتين', 1.9, 3.45],
+          ['Antibacterial Hand Soap', 'صابون يدين سائل مضاد للبكتيريا', 1.5, 2.75],
+          ['Sunscreen SPF 50+ Lotion', 'واقي شمس SPF 50+', 5.5, 9.60],
+          ['Hydrating Lip Balm', 'مرطب شفاه مغذي', 1.4, 2.55],
+          ['Hair Conditioner Silk', 'بلسم شعر حريري', 3.2, 5.75],
+          ['Facial Cotton Pads 100ct', 'قطن تجميل 100 قطعة', 1.3, 2.40],
+          ['Men Shaving Foam Gel', 'جل حلاقة منعش', 2.3, 4.15],
+          ['Disposable Razors 5-Pack', 'شفرات حلاقة 5 قطع', 2.8, 4.95],
+          ['Mint Mouthwash 500ml', 'غسول فم بالنعناع', 2.4, 4.30],
+          ['Hand Cream Shea Butter', 'كريم يدين بزبدة الشيا', 2.2, 3.95],
+          ['Facial Tissues Box 3-Pack', 'مناديل وجه 3 علب', 2.5, 4.45],
+          ['Micellar Cleansing Water', 'ماء ميسيلار مزيل مكياج', 3.5, 6.20],
+          ['Body Lotion Cocoa Glow', 'لوشن جسم بزبدة الكاكاو', 3.1, 5.50]
+        ],
+        electronics: [
+          ['Wireless Bluetooth Earbuds', 'سماعات بلوتوث لاسلكية', 14.0, 24.99],
+          ['Fast USB-C Charger 30W', 'شاحن سريع USB-C 30 واط', 8.5, 14.99],
+          ['Braided Charging Cable 2m', 'كابل شحن مجدول 2 متر', 4.0, 7.50],
+          ['10,000mAh Power Bank', 'باور بانك 10000 مللي أمبير', 12.5, 21.99],
+          ['Wireless Optical Mouse', 'ماوس لاسلكي مريح', 7.5, 13.50],
+          ['RGB Gaming Keyboard', 'لوحة مفاتيح ألعاب مضيئة', 18.0, 31.99],
+          ['Portable Mini Speaker', 'مكبر صوت محمول بلوتوث', 11.0, 19.50],
+          ['Smart Fitness Band', 'سوار ذكي للياقة البدنية', 16.5, 28.99],
+          ['USB Flash Drive 64GB', 'فلاش ميموري 64 جيجا', 5.5, 9.99],
+          ['HD Webcam 1080p', 'كاميرا ويب عالية الدقة', 15.0, 26.50],
+          ['Phone Car Mount Holder', 'حامل هاتف للسيارة', 4.8, 8.75],
+          ['LED Desk Lamp Touch', 'مصباح مكتب LED باللمس', 9.5, 16.99],
+          ['HDMI 4K Ultra Cable', 'كابل HDMI فائق الدقة', 4.5, 8.25],
+          ['Over-Ear Studio Headphones', 'سماعات رأس احترافية', 22.0, 38.99],
+          ['Smart Wi-Fi Plug', 'قابس كهربائي ذكي واي فاي', 6.5, 11.99],
+          ['Digital Kitchen Scale', 'ميزان مطبخ رقمي', 7.0, 12.50],
+          ['Portable Neck Fan', 'مروحة محمولة قابلة للشحن', 6.0, 10.99],
+          ['Universal Travel Adapter', 'محول سفر عالمي', 8.0, 14.50]
+        ],
+        toys: [
+          ['Building Blocks Set 250pc', 'مكعبات بناء 250 قطعة', 9.0, 15.99],
+          ['Remote Control Race Car', 'سيارة سباق بالتحكم عن بعد', 12.0, 21.50],
+          ['Plush Teddy Bear Large', 'دب قطيفة ناعم كبير', 7.5, 13.50],
+          ['1000-Piece World Puzzle', 'بازل 1000 قطعة', 6.5, 11.99],
+          ['Wooden Chess & Checkers', 'لعبة شطرنج خشبية فاخرة', 10.5, 18.50],
+          ['Watercolor Art Kit 48pc', 'طقم رسم وألوان 48 قطعة', 6.0, 10.99],
+          ['Die-Cast Metal Car 3-Pack', 'سيارات معدنية 3 قطع', 4.8, 8.75],
+          ['Action Superhero Figure', 'مجسم بطل خارق', 7.0, 12.50],
+          ['Kids Soccer Ball Size 4', 'كرة قدم للأطفال', 6.8, 12.25],
+          ['Science Volcano Lab Kit', 'مختبر العلوم للأطفال', 8.5, 15.25],
+          ['Family Strategy Board Game', 'لعبة لوحية عائلية', 11.5, 19.99],
+          ['Rubik Speed Cube 3x3', 'مكعب روبيك السريع', 3.5, 6.50],
+          ['Bubble Blaster Automatic', 'مسدس فقاعات أوتوماتيكي', 5.2, 9.50],
+          ['Dollhouse Furniture Set', 'طقم بيت الدمى', 13.0, 22.99],
+          ['Dinosaur Figure Collection', 'مجموعة مجسمات ديناصورات', 5.8, 10.50],
+          ['Junior Acoustic Guitar', 'جيتار صغير للأطفال', 14.5, 25.50],
+          ['Magnetic Drawing Board', 'لوح رسم مغناطيسي', 5.5, 9.99],
+          ['Foldable Kick Scooter', 'سكوتر قابل للطي', 19.0, 33.99]
+        ]
+      };
+
+      const list = [];
+      let idx = 1;
+      for (const cat of CATEGORIES) {
+        const items = templates[cat.id];
+        for (const [enName, arName, cost, price] of items) {
+          list.push({
+            id: `PRD-${String(idx).padStart(3, '0')}`,
+            barcode: `622${String(100000000 + idx * 7919).slice(0, 9)}`,
+            category: cat.id,
+            color: cat.color,
+            icon: cat.icon,
+            name: { en: enName, ar: arName },
+            cost: cost,
+            basePrice: price,
+            price: price,
+            demand: Number((0.75 + (idx % 5) * 0.1).toFixed(2))
+          });
+          idx++;
+        }
+      }
+      return list;
+    })();
+
+    // ==================== 4. GAME STATE, ECONOMY & MISSIONS ====================
+    const GameState = {
+      lang: 'en',
+      started: false,
+      storeOpen: false,
+      money: 2500.00,
+      xp: 0,
+      level: 1,
+      rating: 3.5,
+      cleanliness: 100,
+      day: 1,
+      timeMinutes: 8 * 60, // 8:00 AM
+      weather: 'sunny', // 'sunny' | 'rain'
+      storeTier: 1, // 1 = Local Shop, 2 = Medium Market, 3 = Hypermarket
+      floorColor: '#cbd5e1',
+      wallColor: '#f1f5f9',
+      warehouse: {}, // { productId: qty }
+      stats: {
+        totalSoldItems: 0,
+        totalRevenue: 0,
+        totalProfit: 0,
+        totalCustomersServed: 0,
+        totalStockedItems: 0,
+        dailyRevenue: 0,
+        dailyExpenses: 0
+      },
+      financeHistory: [
+        { day: 0, revenue: 0, expenses: 0, profit: 0 }
+      ],
+      employees: [],
+      completedMissions: [],
+      unlockedUpgrades: []
+    };
+
+    const MISSIONS_DB = [
+      {
+        id: 'm1',
+        title: { en: 'Open your first supermarket', ar: 'افتح السوبر ماركت الخاص بك لأول مرة' },
+        reward: 500,
+        xp: 50,
+        getProgress: () => (GameState.storeOpen || GameState.stats.totalCustomersServed > 0 ? 1 : 0),
+        target: 1
+      },
+      {
+        id: 'm2',
+        title: { en: 'Stock 30 products on display shelves', ar: 'رتب 30 منتجاً على أرفف العرض' },
+        reward: 350,
+        xp: 60,
+        getProgress: () => Math.min(30, GameState.stats.totalStockedItems),
+        target: 30
+      },
+      {
+        id: 'm3',
+        title: { en: 'Sell 20 products to shoppers', ar: 'بع 20 منتجاً للمتسوقين' },
+        reward: 400,
+        xp: 80,
+        getProgress: () => Math.min(20, GameState.stats.totalSoldItems),
+        target: 20
+      },
+      {
+        id: 'm4',
+        title: { en: 'Earn $1,000 in total revenue', ar: 'حقق 1,000 دولار من إجمالي المبيعات' },
+        reward: 600,
+        xp: 100,
+        getProgress: () => Math.min(1000, Math.floor(GameState.stats.totalRevenue)),
+        target: 1000
+      },
+      {
+        id: 'm5',
+        title: { en: 'Hire your first employee', ar: 'وظّف أول موظف في متجرك' },
+        reward: 450,
+        xp: 90,
+        getProgress: () => Math.min(1, GameState.employees.length),
+        target: 1
+      },
+      {
+        id: 'm6',
+        title: { en: 'Serve 25 satisfied customers', ar: 'اخدم 25 زبوناً بنجاح' },
+        reward: 750,
+        xp: 120,
+        getProgress: () => Math.min(25, GameState.stats.totalCustomersServed),
+        target: 25
+      },
+      {
+        id: 'm7',
+        title: { en: 'Reach a 4.2★ Store Reputation', ar: 'ارفع تقييم المتجر إلى 4.2 نجوم' },
+        reward: 1000,
+        xp: 150,
+        getProgress: () => Number(Math.min(4.2, GameState.rating).toFixed(1)),
+        target: 4.2
+      },
+      {
+        id: 'm8',
+        title: { en: 'Expand your supermarket to Tier 2', ar: 'وسّع السوبر ماركت إلى المستوى الثاني' },
+        reward: 2000,
+        xp: 250,
+        getProgress: () => Math.min(2, GameState.storeTier),
+        target: 2
+      }
+    ];
+
+    const EMPLOYEE_CANDIDATES = [
+      { id: 'emp1', role: 'cashier', name: { en: 'Sarah Jenkins', ar: 'سارة محمود' }, roleLabel: { en: 'Senior Cashier', ar: 'كاشير محترف' }, salary: 120, speed: 1.2, icon: 'fa-cash-register' },
+      { id: 'emp2', role: 'stocker', name: { en: 'Omar Hassan', ar: 'عمر حسن' }, roleLabel: { en: 'Shelf Stocker', ar: 'منسق أرفف' }, salary: 110, speed: 1.0, icon: 'fa-boxes-packing' },
+      { id: 'emp3', role: 'cleaner', name: { en: 'Elena Rostova', ar: 'إيلينا كمال' }, roleLabel: { en: 'Sanitation Specialist', ar: 'أخصائية نظافة' }, salary: 95, speed: 1.3, icon: 'fa-broom' },
+      { id: 'emp4', role: 'security', name: { en: 'Marcus Vance', ar: 'طارق المنصور' }, roleLabel: { en: 'Security Officer', ar: 'مسؤول أمن' }, salary: 130, speed: 1.0, icon: 'fa-shield-halved' },
+      { id: 'emp5', role: 'manager', name: { en: 'Layla Al-Mansoor', ar: 'ليلى المنصور' }, roleLabel: { en: 'Floor Manager (+15% Tips)', ar: 'مديرة صالة (+15% أرباح)' }, salary: 180, speed: 1.5, icon: 'fa-user-tie' }
+    ];
+
+    // ==================== 5. 3D WORLD & STORE ENGINE (THREE.JS) ====================
+    const World3D = {
+      scene: null,
+      camera: null,
+      renderer: null,
+      shelves: [],
+      checkoutCounter: null,
+      warehouseZone: null,
+      doorLeft: null,
+      doorRight: null,
+      floorMesh: null,
+      wallMeshes: [],
+      ambientLight: null,
+      dirLight: null,
+      interactables: [],
+      clock: new THREE.Clock(),
+
+      init() {
+        const canvas = document.getElementById('game-canvas');
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color('#0f172a');
+        this.scene.fog = new THREE.FogExp2('#0f172a', 0.016);
+
+        this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 120);
+        this.camera.position.set(0, 1.72, 7.5);
+
+        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        this.setupLights();
+        this.buildSupermarket();
+        this.setupResize();
+      },
+
+      setupLights() {
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        this.scene.add(this.ambientLight);
+
+        this.dirLight = new THREE.DirectionalLight(0xfff8eb, 0.95);
+        this.dirLight.position.set(12, 22, 14);
+        this.dirLight.castShadow = true;
+        this.dirLight.shadow.mapSize.width = 1024;
+        this.dirLight.shadow.mapSize.height = 1024;
+        this.dirLight.shadow.camera.near = 1;
+        this.dirLight.shadow.camera.far = 60;
+        const d = 18;
+        this.dirLight.shadow.camera.left = -d;
+        this.dirLight.shadow.camera.right = d;
+        this.dirLight.shadow.camera.top = d;
+        this.dirLight.shadow.camera.bottom = -d;
+        this.scene.add(this.dirLight);
+
+        // Interior Ceiling Store Lights
+        const lightPositions = [[-5, 4.6, -3], [5, 4.6, -3], [-5, 4.6, 4], [5, 4.6, 4]];
+        for (const [lx, ly, lz] of lightPositions) {
+          const fixture = new THREE.Mesh(
+            new THREE.BoxGeometry(2.6, 0.12, 0.5),
+            new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+          );
+          fixture.position.set(lx, ly, lz);
+          this.scene.add(fixture);
+
+          const pt = new THREE.PointLight(0xe0f2fe, 0.45, 14);
+          pt.position.set(lx, ly - 0.3, lz);
+          this.scene.add(pt);
+        }
+      },
+
+      createTileTexture(baseHex) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = baseHex;
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.18)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, 128, 128);
+        ctx.strokeRect(128, 0, 128, 128);
+        ctx.strokeRect(0, 128, 128, 128);
+        ctx.strokeRect(128, 128, 128, 128);
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(14, 14);
+        return tex;
+      },
+
+      createSignTexture(title, sub, bg = '#0284c7') {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, 512, 128);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(6, 6, 500, 116);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 42px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, 256, 62);
+        ctx.fillStyle = '#bae6fd';
+        ctx.font = '600 22px Inter, sans-serif';
+        ctx.fillText(sub, 256, 100);
+        return new THREE.CanvasTexture(c);
+      },
+
+      buildSupermarket() {
+        // Clear previous dynamic objects if rebuilding
+        this.shelves.forEach(s => this.scene.remove(s.mesh));
+        this.shelves = [];
+        this.interactables = [];
+
+        const storeW = GameState.storeTier === 1 ? 20 : GameState.storeTier === 2 ? 26 : 32;
+        const storeD = GameState.storeTier === 1 ? 20 : GameState.storeTier === 2 ? 24 : 28;
+        this.bounds = { minX: -storeW / 2 + 1.2, maxX: storeW / 2 - 1.2, minZ: -storeD / 2 + 1.2, maxZ: storeD / 2 - 1.2 };
+
+        // Floor
+        if (this.floorMesh) this.scene.remove(this.floorMesh);
+        const floorGeo = new THREE.PlaneGeometry(storeW, storeD);
+        const floorMat = new THREE.MeshStandardMaterial({
+          map: this.createTileTexture(GameState.floorColor),
+          roughness: 0.35,
+          metalness: 0.08
+        });
+        this.floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        this.floorMesh.rotation.x = -Math.PI / 2;
+        this.floorMesh.receiveShadow = true;
+        this.scene.add(this.floorMesh);
+
+        // Exterior Parking Asphalt
+        const road = new THREE.Mesh(
+          new THREE.PlaneGeometry(70, 70),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
+        );
+        road.rotation.x = -Math.PI / 2;
+        road.position.y = -0.02;
+        this.scene.add(road);
+
+        // Walls
+        this.wallMeshes.forEach(w => this.scene.remove(w));
+        this.wallMeshes = [];
+        const wallMat = new THREE.MeshStandardMaterial({ color: GameState.wallColor, roughness: 0.7 });
+
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(storeW, 5, 0.4), wallMat);
+        backWall.position.set(0, 2.5, -storeD / 2);
+        backWall.receiveShadow = true;
+        this.scene.add(backWall);
+        this.wallMeshes.push(backWall);
+
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, storeD), wallMat);
+        leftWall.position.set(-storeW / 2, 2.5, 0);
+        this.scene.add(leftWall);
+        this.wallMeshes.push(leftWall);
+
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, storeD), wallMat);
+        rightWall.position.set(storeW / 2, 2.5, 0);
+        this.scene.add(rightWall);
+        this.wallMeshes.push(rightWall);
+
+        // Front Glass Facade + Automatic Sliding Doors
+        const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(storeW / 2 - 2.2, 5, 0.3), wallMat);
+        frontLeft.position.set(-(storeW / 4 + 1.1), 2.5, storeD / 2);
+        this.scene.add(frontLeft);
+        this.wallMeshes.push(frontLeft);
+
+        const frontRight = new THREE.Mesh(new THREE.BoxGeometry(storeW / 2 - 2.2, 5, 0.3), wallMat);
+        frontRight.position.set(storeW / 4 + 1.1, 2.5, storeD / 2);
+        this.scene.add(frontRight);
+        this.wallMeshes.push(frontRight);
+
+        // Storefront Banner Sign
+        const signMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(9, 1.4, 0.3),
+          new THREE.MeshBasicMaterial({ map: this.createSignTexture('SUPERMARKET ELITE', 'FRESH • ORGANIC • MEGASTORE', '#0369a1') })
+        );
+        signMesh.position.set(0, 4.5, storeD / 2 + 0.1);
+        this.scene.add(signMesh);
+
+        // Sliding Glass Doors
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.42, roughness: 0.1 });
+        this.doorLeft = new THREE.Mesh(new THREE.BoxGeometry(2.1, 3.4, 0.12), glassMat);
+        this.doorLeft.position.set(-1.05, 1.7, storeD / 2);
+        this.scene.add(this.doorLeft);
+
+        this.doorRight = new THREE.Mesh(new THREE.BoxGeometry(2.1, 3.4, 0.12), glassMat);
+        this.doorRight.position.set(1.05, 1.7, storeD / 2);
+        this.scene.add(this.doorRight);
+
+        this.interactables.push({
+          type: 'door',
+          position: new THREE.Vector3(0, 1.5, storeD / 2 - 0.5),
+          radius: 2.8,
+          labelKey: 'interact_door'
+        });
+
+        // Warehouse Pickup Pallet (Back-Left Corner)
+        const whGroup = new THREE.Group();
+        const pallet = new THREE.Mesh(
+          new THREE.BoxGeometry(2.8, 0.25, 2.2),
+          new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.85 })
+        );
+        pallet.position.y = 0.125;
+        whGroup.add(pallet);
+
+        for (let i = 0; i < 4; i++) {
+          const box = new THREE.Mesh(
+            new THREE.BoxGeometry(0.95, 0.75, 0.85),
+            new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 })
+          );
+          box.position.set((i % 2 === 0 ? -0.6 : 0.6), 0.62, (i < 2 ? -0.5 : 0.5));
+          box.castShadow = true;
+          whGroup.add(box);
+        }
+
+        const whSign = new THREE.Mesh(
+          new THREE.PlaneGeometry(2.8, 0.7),
+          new THREE.MeshBasicMaterial({ map: this.createSignTexture('WAREHOUSE STOCK', 'PRESS E TO PICK CRATE', '#b45309') })
+        );
+        whSign.position.set(0, 2.3, -1.0);
+        whGroup.add(whSign);
+
+        const whPos = new THREE.Vector3(-storeW / 2 + 2.4, 0, -storeD / 2 + 2.2);
+        whGroup.position.copy(whPos);
+        this.scene.add(whGroup);
+        this.warehouseZone = whPos;
+
+        this.interactables.push({
+          type: 'warehouse',
+          position: whPos.clone(),
+          radius: 3.0,
+          labelKey: 'interact_warehouse'
+        });
+
+        // Checkout Counter (Front-Right)
+        const ckGroup = new THREE.Group();
+        const desk = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, 1.0, 1.3),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+        );
+        desk.position.y = 0.5;
+        desk.castShadow = true;
+        ckGroup.add(desk);
+
+        const belt = new THREE.Mesh(
+          new THREE.BoxGeometry(2.0, 0.06, 0.9),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 })
+        );
+        belt.position.set(-0.4, 1.03, 0);
+        ckGroup.add(belt);
+
+        const monitor = new THREE.Mesh(
+          new THREE.BoxGeometry(0.55, 0.42, 0.12),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.5 })
+        );
+        monitor.position.set(0.95, 1.32, 0);
+        monitor.rotation.y = -0.35;
+        ckGroup.add(monitor);
+
+        const ckPos = new THREE.Vector3(storeW / 2 - 3.6, 0, storeD / 2 - 3.4);
+        ckGroup.position.copy(ckPos);
+        this.scene.add(ckGroup);
+        this.checkoutCounter = ckPos;
+
+        this.interactables.push({
+          type: 'checkout',
+          position: ckPos.clone(),
+          radius: 3.0,
+          labelKey: 'interact_checkout'
+        });
+
+        // Display Shelves Grid
+        const shelfConfigs = [
+          { x: -5.5, z: -2.5, rot: 0, cat: 'groceries', label: 'GROCERIES' },
+          { x: -5.5, z: 1.8, rot: 0, cat: 'produce', label: 'FRESH PRODUCE' },
+          { x: 0, z: -2.5, rot: 0, cat: 'drinks', label: 'BEVERAGES' },
+          { x: 0, z: 1.8, rot: 0, cat: 'dairy', label: 'DAIRY & EGGS' },
+          { x: 5.5, z: -2.5, rot: 0, cat: 'bakery', label: 'BAKERY & SNACKS' },
+          { x: 5.5, z: 1.8, rot: 0, cat: 'household', label: 'HOUSEHOLD & CARE' }
+        ];
+
+        if (GameState.storeTier >= 2) {
+          shelfConfigs.push(
+            { x: -9.2, z: -2.5, rot: 0, cat: 'meat', label: 'MEAT & POULTRY' },
+            { x: -9.2, z: 1.8, rot: 0, cat: 'frozen', label: 'FROZEN FOODS' }
+          );
+        }
+        if (GameState.storeTier >= 3) {
+          shelfConfigs.push(
+            { x: 9.5, z: -2.5, rot: 0, cat: 'electronics', label: 'ELECTRONICS' },
+            { x: 9.5, z: 1.8, rot: 0, cat: 'toys', label: 'TOYS & GAMES' }
+          );
+        }
+
+        shelfConfigs.forEach((cfg, index) => {
+          this.createShelfUnit(index, cfg.x, cfg.z, cfg.rot, cfg.cat, cfg.label);
+        });
+      },
+
+      createShelfUnit(id, x, z, rotY, defaultCat, label) {
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.4, roughness: 0.5 });
+        const plankMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4 });
+
+        // Uprights
+        const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.3, 0.9), frameMat);
+        leftPost.position.set(-1.35, 1.15, 0);
+        leftPost.castShadow = true;
+        group.add(leftPost);
+
+        const rightPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.3, 0.9), frameMat);
+        rightPost.position.set(1.35, 1.15, 0);
+        rightPost.castShadow = true;
+        group.add(rightPost);
+
+        // Back panel
+        const backPanel = new THREE.Mesh(new THREE.BoxGeometry(2.7, 2.3, 0.08), frameMat);
+        backPanel.position.set(0, 1.15, 0);
+        group.add(backPanel);
+
+        // 3 Horizontal Shelves
+        const levels = [0.45, 1.15, 1.85];
+        levels.forEach(ly => {
+          const plank = new THREE.Mesh(new THREE.BoxGeometry(2.72, 0.08, 0.92), plankMat);
+          plank.position.set(0, ly, 0);
+          plank.receiveShadow = true;
+          group.add(plank);
+        });
+
+        // Header Price/Department Sign
+        const header = new THREE.Mesh(
+          new THREE.BoxGeometry(2.6, 0.36, 0.14),
+          new THREE.MeshBasicMaterial({ map: this.createSignTexture(label, 'SELF-SERVICE AISLE', '#0f172a') })
+        );
+        header.position.set(0, 2.48, 0);
+        group.add(header);
+
+        // Product Mesh Pool Container
+        const itemsGroup = new THREE.Group();
+        group.add(itemsGroup);
+
+        this.scene.add(group);
+
+        const shelfObj = {
+          id,
+          mesh: group,
+          itemsGroup,
+          position: new THREE.Vector3(x, 0, z),
+          category: defaultCat,
+          label,
+          productId: null,
+          quantity: 0,
+          maxCapacity: 24
+        };
+
+        this.shelves.push(shelfObj);
+        this.interactables.push({
+          type: 'shelf',
+          shelfRef: shelfObj,
+          position: new THREE.Vector3(x, 1.0, z),
+          radius: 2.3,
+          labelKey: 'interact_take_shelf'
+        });
+      },
+
+      refreshShelfVisuals(shelf) {
+        while (shelf.itemsGroup.children.length > 0) {
+          shelf.itemsGroup.remove(shelf.itemsGroup.children[0]);
+        }
+        if (!shelf.productId || shelf.quantity <= 0) return;
+
+        const product = PRODUCT_DATABASE.find(p => p.id === shelf.productId);
+        const color = product ? product.color : '#38bdf8';
+        const boxGeo = new THREE.BoxGeometry(0.26, 0.34, 0.24);
+        const boxMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.1 });
+
+        const levels = [0.66, 1.36, 2.06];
+        const count = Math.min(shelf.quantity, 24);
+        for (let i = 0; i < count; i++) {
+          const row = Math.floor(i / 8);
+          const col = i % 8;
+          const itemMesh = new THREE.Mesh(boxGeo, boxMat);
+          const px = -1.05 + col * 0.3;
+          const py = levels[row % 3];
+          const pz = (i % 2 === 0 ? 0.26 : -0.26);
+          itemMesh.position.set(px, py, pz);
+          itemMesh.castShadow = true;
+          shelf.itemsGroup.add(itemMesh);
+        }
+      },
+
+      updateDayNight(minutes) {
+        const hour = minutes / 60;
+        // Smooth daylight curve between 6 AM and 10 PM
+        let dayFactor = Math.sin(((hour - 6) / 16) * Math.PI);
+        dayFactor = Math.max(0.18, Math.min(1, dayFactor));
+
+        if (GameState.weather === 'rain') {
+          dayFactor *= 0.72;
+          this.scene.background.setHex(0x1e293b);
+          this.scene.fog.color.setHex(0x1e293b);
+        } else {
+          const skyColor = new THREE.Color(0x0b0f19).lerp(new THREE.Color(0x38bdf8), dayFactor * 0.55);
+          this.scene.background.copy(skyColor);
+          this.scene.fog.color.copy(skyColor);
+        }
+
+        this.ambientLight.intensity = 0.45 + dayFactor * 0.45;
+        this.dirLight.intensity = 0.25 + dayFactor * 0.85;
+
+        // Automatic Sliding Door Animation
+        const targetOffset = GameState.storeOpen ? 1.85 : 0;
+        if (this.doorLeft && this.doorRight) {
+          this.doorLeft.position.x += (-1.05 - targetOffset - this.doorLeft.position.x) * 0.12;
+          this.doorRight.position.x += (1.05 + targetOffset - this.doorRight.position.x) * 0.12;
+        }
+      },
+
+      setupResize() {
+        window.addEventListener('resize', () => {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
+    };
+
+    // ==================== 6. PLAYER CONTROLLER (PC + TOUCH) ====================
+    const Player = {
+      yaw: 0,
+      pitch: 0,
+      keys: {},
+      joyVec: { x: 0, y: 0 },
+      isDraggingLook: false,
+      lastPointer: { x: 0, y: 0 },
+      holding: null, // { productId, quantity }
+      nearestInteractable: null,
+
+      init() {
+        window.addEventListener('keydown', e => {
+          this.keys[e.code] = true;
+          if (e.code === 'KeyE' && GameState.started && !UI.anyModalOpen()) {
+            this.triggerInteract();
+          }
+          if (e.code === 'KeyC' && GameState.started && !UI.anyModalOpen()) {
+            this.cleanFloorAction();
+          }
+        });
+        window.addEventListener('keyup', e => {
+          this.keys[e.code] = false;
+        });
+
+        const canvas = document.getElementById('game-canvas');
+        canvas.addEventListener('pointerdown', e => {
+          if (!GameState.started || UI.anyModalOpen()) return;
+          this.isDraggingLook = true;
+          this.lastPointer = { x: e.clientX, y: e.clientY };
+        });
+        window.addEventListener('pointermove', e => {
+          if (!this.isDraggingLook || !GameState.started || UI.anyModalOpen()) return;
+          const dx = e.clientX - this.lastPointer.x;
+          const dy = e.clientY - this.lastPointer.y;
+          this.lastPointer = { x: e.clientX, y: e.clientY };
+          this.yaw -= dx * 0.0042;
+          this.pitch = Math.max(-0.85, Math.min(0.85, this.pitch - dy * 0.0042));
+        });
+        window.addEventListener('pointerup', () => {
+          this.isDraggingLook = false;
+        });
+
+        // Virtual Joystick Setup
+        const zone = document.getElementById('touch-joystick-zone');
+        const knob = document.getElementById('touch-joystick-knob');
+        let joyActive = false;
+
+        const updateJoy = (clientX, clientY) => {
+          const rect = zone.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          let dx = clientX - cx;
+          let dy = clientY - cy;
+          const maxR = rect.width * 0.38;
+          const dist = Math.hypot(dx, dy);
+          if (dist > maxR) {
+            dx = (dx / dist) * maxR;
+            dy = (dy / dist) * maxR;
+          }
+          knob.style.transform = `translate(${dx}px, ${dy}px)`;
+          this.joyVec.x = dx / maxR;
+          this.joyVec.y = dy / maxR;
+        };
+
+        zone.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          joyActive = true;
+          updateJoy(e.clientX, e.clientY);
+        });
+        window.addEventListener('pointermove', e => {
+          if (joyActive) updateJoy(e.clientX, e.clientY);
+        });
+        window.addEventListener('pointerup', () => {
+          if (joyActive) {
+            joyActive = false;
+            this.joyVec = { x: 0, y: 0 };
+            knob.style.transform = `translate(0px, 0px)`;
+          }
+        });
+      },
+
+      update(dt) {
+        if (!GameState.started || UI.anyModalOpen()) return;
+
+        // Camera Orientation
+        const euler = new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ');
+        World3D.camera.quaternion.setFromEuler(euler);
+
+        // Movement Input
+        let forward = 0;
+        let strafe = 0;
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) forward += 1;
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) forward -= 1;
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) strafe += 1;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) strafe -= 1;
+
+        forward -= this.joyVec.y;
+        strafe += this.joyVec.x;
+
+        if (forward !== 0 || strafe !== 0) {
+          const speed = 6.2 * dt;
+          const dirForward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+          const dirRight = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+
+          World3D.camera.position.addScaledVector(dirForward, forward * speed);
+          World3D.camera.position.addScaledVector(dirRight, strafe * speed);
+
+          // Clamp inside supermarket walls
+          const b = World3D.bounds;
+          World3D.camera.position.x = Math.max(b.minX, Math.min(b.maxX, World3D.camera.position.x));
+          World3D.camera.position.z = Math.max(b.minZ, Math.min(b.maxZ, World3D.camera.position.z));
+        }
+
+        // Ray / Proximity Interaction Check
+        this.checkInteractables();
+      },
+
+      checkInteractables() {
+        const camPos = World3D.camera.position;
+        let best = null;
+        let bestDist = Infinity;
+
+        for (const item of World3D.interactables) {
+          const d = Math.hypot(camPos.x - item.position.x, camPos.z - item.position.z);
+          if (d <= item.radius && d < bestDist) {
+            best = item;
+            bestDist = d;
+          }
+        }
+
+        this.nearestInteractable = best;
+        const promptEl = document.getElementById('interact-prompt');
+        const textEl = document.getElementById('interact-text');
+        const crossEl = document.getElementById('crosshair');
+
+        if (best) {
+          promptEl.classList.remove('hidden');
+          crossEl.classList.add('crosshair-active');
+          if (best.type === 'shelf' && this.holding) {
+            const p = PRODUCT_DATABASE.find(x => x.id === this.holding.productId);
+            textEl.textContent = `${Game.t('interact_stock')} ${p ? p.name[GameState.lang] : ''}`;
+          } else {
+            textEl.textContent = Game.t(best.labelKey);
+          }
+        } else {
+          promptEl.classList.add('hidden');
+          crossEl.classList.remove('crosshair-active');
+        }
+      },
+
+      triggerInteract() {
+        const target = this.nearestInteractable;
+        if (!target) return;
+
+        if (target.type === 'door') {
+          Game.toggleStoreOpen();
+        } else if (target.type === 'warehouse') {
+          // Pick first available product crate from warehouse
+          const entries = Object.entries(GameState.warehouse).filter(([, qty]) => qty > 0);
+          if (entries.length === 0) {
+            UI.openTablet('market');
+            return;
+          }
+          const [pid, qty] = entries[0];
+          const take = Math.min(12, qty);
+          this.pickBoxFromWarehouse(pid, take);
+        } else if (target.type === 'shelf') {
+          const shelf = target.shelfRef;
+          if (this.holding) {
+            // Stock onto shelf
+            if (shelf.productId && shelf.productId !== this.holding.productId && shelf.quantity > 0) {
+              UI.toast(GameState.lang === 'ar' ? 'هذا الرف يحتوي على منتج مختلف!' : 'This shelf already holds a different product!', 'amber');
+              return;
+            }
+            const space = shelf.maxCapacity - shelf.quantity;
+            if (space <= 0) {
+              UI.toast(GameState.lang === 'ar' ? 'الرف ممتلئ بالكامل!' : 'Shelf is already at full capacity!', 'amber');
+              return;
+            }
+            const transfer = Math.min(space, this.holding.quantity);
+            shelf.productId = this.holding.productId;
+            shelf.quantity += transfer;
+            this.holding.quantity -= transfer;
+            GameState.stats.totalStockedItems += transfer;
+            Game.addXP(transfer * 2);
+
+            if (this.holding.quantity <= 0) {
+              this.holding = null;
+            }
+            this.updateHoldingUI();
+            World3D.refreshShelfVisuals(shelf);
+            SoundEngine.playPop();
+            UI.toast(`${Game.t('msg_stocked')} (+${transfer})`, 'emerald');
+          } else {
+            UI.openTablet('warehouse');
+          }
+        } else if (target.type === 'checkout') {
+          CheckoutSystem.openPOS();
+        }
+      },
+
+      pickBoxFromWarehouse(productId, qty) {
+        const available = GameState.warehouse[productId] || 0;
+        if (available <= 0) return;
+        if (this.holding) {
+          this.dropHolding();
+        }
+        const take = Math.min(qty, available);
+        GameState.warehouse[productId] -= take;
+        this.holding = { productId, quantity: take };
+        this.updateHoldingUI();
+        SoundEngine.playPop();
+      },
+
+      dropHolding() {
+        if (!this.holding) return;
+        GameState.warehouse[this.holding.productId] = (GameState.warehouse[this.holding.productId] || 0) + this.holding.quantity;
+        this.holding = null;
+        this.updateHoldingUI();
+      },
+
+      updateHoldingUI() {
+        const banner = document.getElementById('holding-banner');
+        if (!this.holding) {
+          banner.classList.add('hidden');
+          return;
+        }
+        const prod = PRODUCT_DATABASE.find(p => p.id === this.holding.productId);
+        document.getElementById('holding-name').textContent = prod ? prod.name[GameState.lang] : this.holding.productId;
+        document.getElementById('holding-qty').textContent = `x${this.holding.quantity}`;
+        banner.classList.remove('hidden');
+      },
+
+      cleanFloorAction() {
+        if (GameState.cleanliness >= 100) {
+          UI.toast(GameState.lang === 'ar' ? 'الأرضية نظيفة تماماً بالفعل!' : 'Store floors are already spotless!', 'sky');
+          return;
+        }
+        GameState.cleanliness = Math.min(100, GameState.cleanliness + 35);
+        GameState.rating = Math.min(5.0, Number((GameState.rating + 0.05).toFixed(2)));
+        Game.addXP(10);
+        SoundEngine.playPop();
+        UI.toast(Game.t('msg_cleaned'), 'emerald');
+      }
+    };
+
+    // ==================== 7. CUSTOMER & EMPLOYEE AI SYSTEM ====================
+    const AISystem = {
+      customers: [],
+      queue: [],
+      spawnTimer: 0,
+      employeeTimer: 0,
+
+      update(dt) {
+        if (!GameState.started) return;
+
+        // Spawn shoppers when store is open
+        if (GameState.storeOpen && this.customers.length < (4 + GameState.storeTier * 3)) {
+          this.spawnTimer -= dt;
+          if (this.spawnTimer <= 0) {
+            this.spawnCustomer();
+            this.spawnTimer = Math.max(3.5, 9 - GameState.rating);
+          }
+        }
+
+        // Update each customer
+        for (let i = this.customers.length - 1; i >= 0; i--) {
+          const c = this.customers[i];
+          this.updateCustomer(c, dt);
+          if (c.state === 'done') {
+            World3D.scene.remove(c.mesh);
+            this.customers.splice(i, 1);
+          }
+        }
+
+        // Employee Automation Tick
+        this.employeeTimer += dt;
+        if (this.employeeTimer >= 4.0) {
+          this.employeeTimer = 0;
+          this.runEmployees();
+        }
+      },
+
+      spawnCustomer() {
+        const archetypes = [
+          { type: 'Regular', color: 0x38bdf8, budgetMult: 1.15 },
+          { type: 'VIP', color: 0xf59e0b, budgetMult: 1.6 },
+          { type: 'Budget', color: 0x10b981, budgetMult: 0.98 },
+          { type: 'Family', color: 0xa855f7, budgetMult: 1.25 }
+        ];
+        const arch = archetypes[Math.floor(Math.random() * archetypes.length)];
+
+        // Create 3D Stylized Shopper Avatar
+        const group = new THREE.Group();
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.32, 1.15, 12),
+          new THREE.MeshStandardMaterial({ color: arch.color, roughness: 0.5 })
+        );
+        body.position.y = 0.65;
+        body.castShadow = true;
+        group.add(body);
+
+        const head = new THREE.Mesh(
+          new THREE.SphereGeometry(0.24, 14, 14),
+          new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.4 })
+        );
+        head.position.y = 1.45;
+        group.add(head);
+
+        const startZ = World3D.bounds.maxZ + 1.5;
+        group.position.set((Math.random() - 0.5) * 1.4, 0, startZ);
+        World3D.scene.add(group);
+
+        // Pick a stocked shelf to visit
+        const stockedShelves = World3D.shelves.filter(s => s.productId && s.quantity > 0);
+        const targetShelf = stockedShelves.length > 0
+          ? stockedShelves[Math.floor(Math.random() * stockedShelves.length)]
+          : World3D.shelves[0];
+
+        this.customers.push({
+          id: Date.now() + Math.random(),
+          archetype: arch,
+          mesh: group,
+          state: 'browsing', // 'browsing' | 'queuing' | 'leaving' | 'done'
+          targetPos: new THREE.Vector3(targetShelf.position.x + (Math.random() > 0.5 ? 1.3 : -1.3), 0, targetShelf.position.z),
+          targetShelf,
+          basket: [],
+          waitTimer: 1.5,
+          paymentMethod: Math.random() > 0.45 ? 'CARD' : 'CASH'
+        });
+
+        // Slight floor wear per customer
+        GameState.cleanliness = Math.max(20, Number((GameState.cleanliness - 0.8).toFixed(1)));
+      },
+
+      updateCustomer(c, dt) {
+        const speed = 2.6 * dt;
+        const pos = c.mesh.position;
+
+        if (c.state === 'browsing') {
+          const dist = pos.distanceTo(c.targetPos);
+          if (dist > 0.25) {
+            const dir = c.targetPos.clone().sub(pos).normalize();
+            pos.addScaledVector(dir, speed);
+            c.mesh.lookAt(c.targetPos.x, 0, c.targetPos.z);
+          } else {
+            c.waitTimer -= dt;
+            if (c.waitTimer <= 0) {
+              // Attempt to pick product from shelf
+              if (c.targetShelf && c.targetShelf.productId && c.targetShelf.quantity > 0) {
+                const prod = PRODUCT_DATABASE.find(p => p.id === c.targetShelf.productId);
+                if (prod && prod.price <= prod.basePrice * c.archetype.budgetMult) {
+                  const want = Math.min(c.targetShelf.quantity, c.archetype.type === 'Family' ? 3 : 2);
+                  c.targetShelf.quantity -= want;
+                  World3D.refreshShelfVisuals(c.targetShelf);
+                  for (let k = 0; k < want; k++) c.basket.push(prod);
+                } else {
+                  // Price too high reaction
+                  GameState.rating = Math.max(1.0, Number((GameState.rating - 0.03).toFixed(2)));
+                }
+              } else {
+                // Empty shelf reaction
+                GameState.rating = Math.max(1.0, Number((GameState.rating - 0.02).toFixed(2)));
+              }
+
+              if (c.basket.length > 0) {
+                c.state = 'queuing';
+                this.queue.push(c);
+              } else {
+                c.state = 'leaving';
+                c.targetPos.set(0, 0, World3D.bounds.maxZ + 2.5);
+              }
+            }
+          }
+        } else if (c.state === 'queuing') {
+          const idx = this.queue.indexOf(c);
+          const qPos = new THREE.Vector3(
+            World3D.checkoutCounter.x - 1.4,
+            0,
+            World3D.checkoutCounter.z - idx * 1.15
+          );
+          if (pos.distanceTo(qPos) > 0.2) {
+            const dir = qPos.clone().sub(pos).normalize();
+            pos.addScaledVector(dir, speed);
+            c.mesh.lookAt(World3D.checkoutCounter.x, 0, World3D.checkoutCounter.z);
+          }
+        } else if (c.state === 'leaving') {
+          if (pos.distanceTo(c.targetPos) > 0.3) {
+            const dir = c.targetPos.clone().sub(pos).normalize();
+            pos.addScaledVector(dir, speed * 1.2);
+            c.mesh.lookAt(c.targetPos.x, 0, c.targetPos.z);
+          } else {
+            c.state = 'done';
+          }
+        }
+      },
+
+      runEmployees() {
+        // Cleaner AI
+        if (GameState.employees.some(e => e.role === 'cleaner') && GameState.cleanliness < 95) {
+          GameState.cleanliness = Math.min(100, GameState.cleanliness + 12);
+        }
+
+        // Stocker AI
+        if (GameState.employees.some(e => e.role === 'stocker')) {
+          for (const shelf of World3D.shelves) {
+            if (shelf.quantity < 8) {
+              const pid = shelf.productId || Object.keys(GameState.warehouse).find(k => GameState.warehouse[k] > 0);
+              if (pid && GameState.warehouse[pid] > 0) {
+                const take = Math.min(6, GameState.warehouse[pid], shelf.maxCapacity - shelf.quantity);
+                if (take > 0) {
+                  GameState.warehouse[pid] -= take;
+                  shelf.productId = pid;
+                  shelf.quantity += take;
+                  GameState.stats.totalStockedItems += take;
+                  World3D.refreshShelfVisuals(shelf);
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // Cashier AI
+        if (GameState.employees.some(e => e.role === 'cashier') && this.queue.length > 0 && !CheckoutSystem.isOpen) {
+          const frontCustomer = this.queue[0];
+          const dist = frontCustomer.mesh.position.distanceTo(new THREE.Vector3(World3D.checkoutCounter.x - 1.4, 0, World3D.checkoutCounter.z));
+          if (dist < 0.8) {
+            CheckoutSystem.processAutomatedCheckout(frontCustomer);
+          }
+        }
+      }
+    };
+
+    // ==================== 8. INTERACTIVE CHECKOUT POS SYSTEM ====================
+    const CheckoutSystem = {
+      isOpen: false,
+      activeCustomer: null,
+      scannedIndices: new Set(),
+
+      openPOS() {
+        if (AISystem.queue.length === 0) {
+          UI.toast(GameState.lang === 'ar' ? 'لا يوجد زبائن في طابور الكاشير حالياً.' : 'No customers waiting at checkout queue.', 'sky');
+          return;
+        }
+        this.activeCustomer = AISystem.queue[0];
+        this.scannedIndices.clear();
+        this.isOpen = true;
+        document.getElementById('checkout-modal').classList.remove('hidden');
+        this.renderPOS();
+      },
+
+      closePOS() {
+        this.isOpen = false;
+        this.activeCustomer = null;
+        document.getElementById('checkout-modal').classList.add('hidden');
+      },
+
+      renderPOS() {
+        const c = this.activeCustomer;
+        if (!c) return;
+
+        document.getElementById('pos-customer-info').textContent =
+          `${c.archetype.type} Shopper • ${c.basket.length} items`;
+        document.getElementById('pos-pay-method').textContent = c.paymentMethod;
+        document.getElementById('pos-scan-count').textContent =
+          `${this.scannedIndices.size} / ${c.basket.length} Scanned`;
+
+        const beltEl = document.getElementById('pos-belt-items');
+        beltEl.innerHTML = '';
+        c.basket.forEach((prod, idx) => {
+          const scanned = this.scannedIndices.has(idx);
+          const btn = document.createElement('button');
+          btn.className = `px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+            scanned
+              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 opacity-60'
+              : 'bg-slate-800 border border-sky-400/50 text-white hover:bg-sky-500/20'
+          }`;
+          btn.innerHTML = `<i class="fa-solid ${prod.icon}"></i><span>${prod.name[GameState.lang]}</span><span class="text-emerald-400">$${prod.price.toFixed(2)}</span>`;
+          btn.onclick = () => this.scanSingleItem(idx);
+          beltEl.appendChild(btn);
+        });
+
+        const receiptEl = document.getElementById('pos-receipt-list');
+        receiptEl.innerHTML = `<div class="text-slate-400 border-b border-slate-800 pb-1">--- SUPERMARKET ELITE RECEIPT ---</div>`;
+        let total = 0;
+        this.scannedIndices.forEach(idx => {
+          const p = c.basket[idx];
+          total += p.price;
+          receiptEl.innerHTML += `<div class="flex justify-between text-slate-200"><span>${p.name[GameState.lang]} [${p.barcode}]</span><span>$${p.price.toFixed(2)}</span></div>`;
+        });
+
+        document.getElementById('pos-total').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('btn-pos-complete').disabled = this.scannedIndices.size < c.basket.length;
+      },
+
+      scanSingleItem(idx) {
+        if (this.scannedIndices.has(idx)) return;
+        this.scannedIndices.add(idx);
+        SoundEngine.playBeep();
+        this.renderPOS();
+      },
+
+      scanAllItems() {
+        if (!this.activeCustomer) return;
+        this.activeCustomer.basket.forEach((_, idx) => this.scannedIndices.add(idx));
+        SoundEngine.playBeep();
+        this.renderPOS();
+      },
+
+      completeTransaction() {
+        const c = this.activeCustomer;
+        if (!c || this.scannedIndices.size < c.basket.length) return;
+
+        this.finalizeSale(c);
+        this.closePOS();
+      },
+
+      processAutomatedCheckout(c) {
+        this.finalizeSale(c);
+      },
+
+      finalizeSale(c) {
+        const hasManager = GameState.employees.some(e => e.role === 'manager');
+        const bonusMult = hasManager ? 1.15 : 1.0;
+
+        let revenue = 0;
+        let cost = 0;
+        c.basket.forEach(p => {
+          revenue += p.price * bonusMult;
+          cost += p.cost;
+        });
+
+        GameState.money = Number((GameState.money + revenue).toFixed(2));
+        GameState.stats.totalSoldItems += c.basket.length;
+        GameState.stats.totalRevenue += revenue;
+        GameState.stats.totalProfit += (revenue - cost);
+        GameState.stats.dailyRevenue += revenue;
+        GameState.stats.totalCustomersServed += 1;
+        GameState.rating = Math.min(5.0, Number((GameState.rating + 0.04).toFixed(2)));
+        Game.addXP(c.basket.length * 5 + 10);
+
+        // Remove from queue and send customer out
+        const qIdx = AISystem.queue.indexOf(c);
+        if (qIdx !== -1) AISystem.queue.splice(qIdx, 1);
+        c.state = 'leaving';
+        c.targetPos.set(0, 0, World3D.bounds.maxZ + 2.5);
+
+        SoundEngine.playCash();
+        UI.toast(`+$${revenue.toFixed(2)} (${c.basket.length} items sold)`, 'emerald');
+      }
+    };
+
+    // ==================== 9. CORE GAME CONTROLLER & SAVE SYSTEM ====================
+    const Game = {
+      t(key) {
+        return (I18N[GameState.lang] && I18N[GameState.lang][key]) || I18N.en[key] || key;
+      },
+
+      setLanguage(lang) {
+        GameState.lang = lang;
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const k = el.getAttribute('data-i18n');
+          if (this.t(k)) el.textContent = this.t(k);
+        });
+
+        const enBtn = document.getElementById('btn-lang-en');
+        const arBtn = document.getElementById('btn-lang-ar');
+        if (lang === 'en') {
+          enBtn.className = 'px-4 py-2 rounded-xl text-sm font-bold border border-sky-400 bg-sky-500/20 text-white transition';
+          arBtn.className = 'px-4 py-2 rounded-xl text-sm font-bold border border-slate-600 bg-slate-800/70 text-slate-300 hover:border-sky-400 transition';
+        } else {
+          arBtn.className = 'px-4 py-2 rounded-xl text-sm font-bold border border-emerald-400 bg-emerald-500/20 text-white transition';
+          enBtn.className = 'px-4 py-2 rounded-xl text-sm font-bold border border-slate-600 bg-slate-800/70 text-slate-300 hover:border-sky-400 transition';
+        }
+
+        Player.updateHoldingUI();
+        if (!document.getElementById('tablet-modal').classList.contains('hidden')) {
+          UI.renderCurrentTab();
+        }
+      },
+
+      startNewGame() {
+        Object.assign(GameState, {
+          started: true,
+          storeOpen: false,
+          money: 2500.00,
+          xp: 0,
+          level: 1,
+          rating: 3.5,
+          cleanliness: 100,
+          day: 1,
+          timeMinutes: 8 * 60,
+          weather: 'sunny',
+          storeTier: 1,
+          floorColor: '#cbd5e1',
+          wallColor: '#f1f5f9',
+          warehouse: {
+            'PRD-001': 24,
+            'PRD-019': 24,
+            'PRD-037': 24,
+            'PRD-055': 24
+          },
+          stats: {
+            totalSoldItems: 0,
+            totalRevenue: 0,
+            totalProfit: 0,
+            totalCustomersServed: 0,
+            totalStockedItems: 0,
+            dailyRevenue: 0,
+            dailyExpenses: 0
+          },
+          financeHistory: [{ day: 0, revenue: 0, expenses: 0, profit: 0 }],
+          employees: [],
+          completedMissions: [],
+          unlockedUpgrades: []
+        });
+
+        World3D.buildSupermarket();
+        // Pre-stock 2 starter shelves for immediate playability
+        if (World3D.shelves[0]) {
+          World3D.shelves[0].productId = 'PRD-001';
+          World3D.shelves[0].quantity = 12;
+          World3D.refreshShelfVisuals(World3D.shelves[0]);
+        }
+        if (World3D.shelves[2]) {
+          World3D.shelves[2].productId = 'PRD-037';
+          World3D.shelves[2].quantity = 12;
+          World3D.refreshShelfVisuals(World3D.shelves[2]);
+        }
+
+        this.enterGame();
+        this.saveToSlot(1, true);
+      },
+
+      continueGame() {
+        if (!this.loadFromSlot(1)) {
+          this.startNewGame();
+        }
+      },
+
+      enterGame() {
+        GameState.started = true;
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('hud-container').classList.remove('hidden');
+        SoundEngine.init();
+        UI.updateHUD();
+      },
+
+      toggleStoreOpen() {
+        GameState.storeOpen = !GameState.storeOpen;
+        SoundEngine.playPop();
+        UI.toast(this.t(GameState.storeOpen ? 'msg_opened' : 'msg_closed'), GameState.storeOpen ? 'emerald' : 'amber');
+        UI.updateHUD();
+      },
+
+      addXP(amount) {
+        GameState.xp += amount;
+        const req = GameState.level * 100;
+        if (GameState.xp >= req) {
+          GameState.xp -= req;
+          GameState.level += 1;
+          SoundEngine.playSuccess();
+          UI.toast(`LEVEL UP! Store Level ${GameState.level}`, 'sky');
+        }
+      },
+
+      orderProductCrate(productId, crateSize = 12) {
+        const prod = PRODUCT_DATABASE.find(p => p.id === productId);
+        if (!prod) return;
+        const totalCost = Number((prod.cost * crateSize).toFixed(2));
+        if (GameState.money < totalCost) {
+          UI.toast(this.t('msg_no_funds'), 'rose');
+          return;
+        }
+        GameState.money = Number((GameState.money - totalCost).toFixed(2));
+        GameState.stats.dailyExpenses += totalCost;
+        GameState.warehouse[productId] = (GameState.warehouse[productId] || 0) + crateSize;
+        SoundEngine.playCash();
+        UI.toast(`${this.t('msg_ordered')} ${prod.name[GameState.lang]} (x${crateSize})`, 'emerald');
+        UI.renderCurrentTab();
+        UI.updateHUD();
+      },
+
+      adjustProductPrice(productId, delta) {
+        const prod = PRODUCT_DATABASE.find(p => p.id === productId);
+        if (!prod) return;
+        prod.price = Math.max(0.5, Number((prod.price + delta).toFixed(2)));
+        SoundEngine.playPop();
+        UI.renderCurrentTab();
+      },
+
+      hireEmployee(empId) {
+        if (GameState.employees.some(e => e.id === empId)) return;
+        const cand = EMPLOYEE_CANDIDATES.find(c => c.id === empId);
+        if (!cand) return;
+        if (GameState.money < cand.salary) {
+          UI.toast(this.t('msg_no_funds'), 'rose');
+          return;
+        }
+        GameState.money = Number((GameState.money - cand.salary).toFixed(2));
+        GameState.stats.dailyExpenses += cand.salary;
+        GameState.employees.push({ ...cand });
+        SoundEngine.playSuccess();
+        UI.toast(`Hired ${cand.name[GameState.lang]}!`, 'emerald');
+        UI.renderCurrentTab();
+      },
+
+      fireEmployee(empId) {
+        GameState.employees = GameState.employees.filter(e => e.id !== empId);
+        SoundEngine.playPop();
+        UI.renderCurrentTab();
+      },
+
+      upgradeStoreTier(tier, cost) {
+        if (GameState.storeTier >= tier) return;
+        if (GameState.money < cost) {
+          UI.toast(this.t('msg_no_funds'), 'rose');
+          return;
+        }
+        GameState.money = Number((GameState.money - cost).toFixed(2));
+        GameState.stats.dailyExpenses += cost;
+        GameState.storeTier = tier;
+
+        // Preserve existing shelf contents
+        const oldData = World3D.shelves.map(s => ({ productId: s.productId, quantity: s.quantity }));
+        World3D.buildSupermarket();
+        oldData.forEach((d, idx) => {
+          if (World3D.shelves[idx] && d.productId) {
+            World3D.shelves[idx].productId = d.productId;
+            World3D.shelves[idx].quantity = d.quantity;
+            World3D.refreshShelfVisuals(World3D.shelves[idx]);
+          }
+        });
+
+        SoundEngine.playSuccess();
+        UI.toast(`Supermarket Expanded to Tier ${tier}!`, 'emerald');
+        UI.renderCurrentTab();
+      },
+
+      customizeStoreColors(floorHex, wallHex) {
+        if (floorHex) GameState.floorColor = floorHex;
+        if (wallHex) GameState.wallColor = wallHex;
+        if (World3D.floorMesh) {
+          World3D.floorMesh.material.map = World3D.createTileTexture(GameState.floorColor);
+          World3D.floorMesh.material.needsUpdate = true;
+        }
+        World3D.wallMeshes.forEach(w => w.material.color.set(GameState.wallColor));
+        SoundEngine.playPop();
+      },
+
+      applySettings() {
+        const gfx = document.getElementById('setting-graphics').value;
+        const aud = document.getElementById('setting-audio').value;
+        SoundEngine.enabled = aud === 'on';
+        if (World3D.renderer) {
+          World3D.renderer.shadowMap.enabled = gfx === 'high';
+          World3D.renderer.setPixelRatio(gfx === 'low' ? 1 : Math.min(window.devicePixelRatio, 2));
+        }
+      },
+
+      checkMissions() {
+        for (const m of MISSIONS_DB) {
+          if (GameState.completedMissions.includes(m.id)) continue;
+          if (m.getProgress() >= m.target) {
+            GameState.completedMissions.push(m.id);
+            GameState.money = Number((GameState.money + m.reward).toFixed(2));
+            this.addXP(m.xp);
+            SoundEngine.playSuccess();
+            UI.toast(`${this.t('msg_mission_done')} +$${m.reward}`, 'amber');
+          }
+        }
+      },
+
+      advanceTime(dt) {
+        if (!GameState.started) return;
+        // 1 real second = 3 in-game minutes
+        GameState.timeMinutes += dt * 3;
+        if (GameState.timeMinutes >= 22 * 60) {
+          // End of Day Billing & Summary
+          const rent = 85 * GameState.storeTier;
+          const elec = 35 * GameState.storeTier;
+          const wages = GameState.employees.reduce((sum, e) => sum + e.salary, 0);
+          const totalBills = rent + elec + wages;
+
+          GameState.money = Number((GameState.money - totalBills).toFixed(2));
+          GameState.stats.dailyExpenses += totalBills;
+
+          GameState.financeHistory.push({
+            day: GameState.day,
+            revenue: Number(GameState.stats.dailyRevenue.toFixed(2)),
+            expenses: Number(GameState.stats.dailyExpenses.toFixed(2)),
+            profit: Number((GameState.stats.dailyRevenue - GameState.stats.dailyExpenses).toFixed(2))
+          });
+
+          GameState.stats.dailyRevenue = 0;
+          GameState.stats.dailyExpenses = 0;
+          GameState.day += 1;
+          GameState.timeMinutes = 8 * 60;
+          GameState.weather = Math.random() > 0.72 ? 'rain' : 'sunny';
+
+          UI.toast(`Day ${GameState.day} Started! Nightly Bills Paid: -$${totalBills}`, 'sky');
+          this.saveToSlot(1, true);
+        }
+        World3D.updateDayNight(GameState.timeMinutes);
+      },
+
+      saveToSlot(slot, silent = false) {
+        const payload = {
+          state: GameState,
+          shelves: World3D.shelves.map(s => ({ productId: s.productId, quantity: s.quantity })),
+          prices: PRODUCT_DATABASE.map(p => ({ id: p.id, price: p.price })),
+          savedAt: new Date().toLocaleString()
+        };
+        localStorage.setItem(`supermarket_elite_slot_${slot}`, JSON.stringify(payload));
+        if (!silent) {
+          SoundEngine.playSuccess();
+          UI.toast(`${this.t('msg_saved')} #${slot}`, 'emerald');
+        }
+        UI.renderSaveSlots();
+      },
+
+      loadFromSlot(slot) {
+        const raw = localStorage.getItem(`supermarket_elite_slot_${slot}`);
+        if (!raw) return false;
+        try {
+          const data = JSON.parse(raw);
+          Object.assign(GameState, data.state);
+          if (data.prices) {
+            data.prices.forEach(pr => {
+              const item = PRODUCT_DATABASE.find(p => p.id === pr.id);
+              if (item) item.price = pr.price;
+            });
+          }
+          World3D.buildSupermarket();
+          if (data.shelves) {
+            data.shelves.forEach((sData, idx) => {
+              if (World3D.shelves[idx]) {
+                World3D.shelves[idx].productId = sData.productId;
+                World3D.shelves[idx].quantity = sData.quantity;
+                World3D.refreshShelfVisuals(World3D.shelves[idx]);
+              }
+            });
+          }
+          this.setLanguage(GameState.lang || 'en');
+          this.enterGame();
+          UI.closeModal('modal-saves');
+          UI.toast(this.t('msg_loaded'), 'emerald');
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+    };
+
+    // ==================== 10. UI & MANAGEMENT TABLET RENDERER ====================
+    const UI = {
+      currentTab: 'market',
+      selectedCategory: 'all',
+      searchQuery: '',
+
+      anyModalOpen() {
+        return (
+          !document.getElementById('tablet-modal').classList.contains('hidden') ||
+          !document.getElementById('checkout-modal').classList.contains('hidden') ||
+          !document.getElementById('modal-saves').classList.contains('hidden') ||
+          !document.getElementById('modal-settings').classList.contains('hidden') ||
+          !document.getElementById('modal-credits').classList.contains('hidden')
+        );
+      },
+
+      openModal(id) {
+        if (id === 'modal-saves') this.renderSaveSlots();
+        document.getElementById(id).classList.remove('hidden');
+      },
+
+      closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+      },
+
+      pauseToMenu() {
+        Game.saveToSlot(1, true);
+        document.getElementById('main-menu').classList.remove('hidden');
+      },
+
+      openTablet(tab = 'market') {
+        document.getElementById('tablet-modal').classList.remove('hidden');
+        this.switchTab(tab);
+      },
+
+      closeTablet() {
+        document.getElementById('tablet-modal').classList.add('hidden');
+      },
+
+      switchTab(tab) {
+        this.currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.className = 'tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-slate-300 hover:bg-slate-800 whitespace-nowrap';
+        });
+        const activeBtn = document.getElementById(`tab-btn-${tab}`);
+        if (activeBtn) {
+          activeBtn.className = 'tab-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold bg-sky-500 text-white whitespace-nowrap';
+        }
+        this.renderCurrentTab();
+      },
+
+      renderCurrentTab() {
+        document.getElementById('tablet-balance').textContent = `$${GameState.money.toFixed(2)}`;
+        const container = document.getElementById('tablet-content');
+        const isAr = GameState.lang === 'ar';
+
+        if (this.currentTab === 'market') {
+          const filtered = PRODUCT_DATABASE.filter(p => {
+            const catMatch = this.selectedCategory === 'all' || p.category === this.selectedCategory;
+            const q = this.searchQuery.toLowerCase();
+            const textMatch = !q || p.name.en.toLowerCase().includes(q) || p.name.ar.includes(q) || p.id.toLowerCase().includes(q);
+            return catMatch && textMatch;
+          });
+
+          container.innerHTML = `
+            <div class="space-y-4">
+              <!-- Filters Bar -->
+              <div class="flex flex-col md:flex-row gap-3 justify-between">
+                <div class="flex gap-1.5 overflow-x-auto pb-1">
+                  <button onclick="UI.selectedCategory='all'; UI.renderCurrentTab()" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${this.selectedCategory==='all'?'bg-sky-500 text-white':'bg-slate-800 text-slate-300'}">${Game.t('cat_all')} (216)</button>
+                  ${CATEGORIES.map(c => `
+                    <button onclick="UI.selectedCategory='${c.id}'; UI.renderCurrentTab()" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${this.selectedCategory===c.id?'bg-sky-500 text-white':'bg-slate-800 text-slate-300'}">
+                      <i class="fa-solid ${c.icon} me-1"></i>${Game.t(c.key)}
+                    </button>
+                  `).join('')}
+                </div>
+                <input type="text" value="${this.searchQuery}" oninput="UI.searchQuery=this.value; UI.renderCurrentTab()" placeholder="${isAr ? 'ابحث عن منتج...' : 'Search 216 products...'}" class="bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white w-full md:w-64 focus:outline-none focus:border-sky-400" />
+              </div>
+
+              <!-- Product Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                ${filtered.slice(0, 60).map(p => {
+                  const crateCost = (p.cost * 12).toFixed(2);
+                  const margin = (((p.price - p.cost) / p.price) * 100).toFixed(0);
+                  const inWh = GameState.warehouse[p.id] || 0;
+                  return `
+                    <div class="glass-card rounded-2xl p-3.5 flex flex-col justify-between gap-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-950 font-bold text-base shrink-0" style="background:${p.color}">
+                            <i class="fa-solid ${p.icon}"></i>
+                          </div>
+                          <div>
+                            <div class="text-xs font-extrabold text-white line-clamp-1">${p.name[GameState.lang]}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">${p.id} • Stock: <strong class="text-amber-300">${inWh}</strong></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-3 gap-1 bg-slate-900/70 rounded-xl p-2 text-center text-[11px]">
+                        <div><div class="text-slate-400">${isAr?'التكلفة':'Cost'}</div><div class="font-bold text-slate-200">$${p.cost.toFixed(2)}</div></div>
+                        <div><div class="text-slate-400">${isAr?'البيع':'Retail'}</div><div class="font-bold text-emerald-400">$${p.price.toFixed(2)}</div></div>
+                        <div><div class="text-slate-400">${isAr?'الربح':'Margin'}</div><div class="font-bold text-sky-400">${margin}%</div></div>
+                      </div>
+                      <button onclick="Game.orderProductCrate('${p.id}', 12)" class="btn-aaa w-full py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cart-plus"></i>
+                        <span>${isAr ? 'شراء صندوق (12)' : 'Order Crate (x12)'} — $${crateCost}</span>
+                      </button>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        } else if (this.currentTab === 'warehouse') {
+          const owned = PRODUCT_DATABASE.filter(p => (GameState.warehouse[p.id] || 0) > 0 || World3D.shelves.some(s => s.productId === p.id));
+          container.innerHTML = `
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-white">${isAr ? 'إدارة المخزون وتسعير المنتجات' : 'Warehouse Inventory & Dynamic Pricing'}</h3>
+                <span class="text-xs text-slate-400">${isAr ? 'اضغط على "حمل الصندوق" ثم توجه للرف واضغط E' : 'Click "Carry Box" then walk to any shelf & press E'}</span>
+              </div>
+              ${owned.length === 0 ? `<div class="p-8 text-center text-slate-400">${isAr ? 'المستودع فارغ! اطلب بضائع من سوق الموردين.' : 'Warehouse is empty! Order crates from the Supplier Market.'}</div>` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  ${owned.map(p => {
+                    const whQty = GameState.warehouse[p.id] || 0;
+                    return `
+                      <div class="glass-card rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-950 font-bold" style="background:${p.color}"><i class="fa-solid ${p.icon}"></i></div>
+                            <div>
+                              <div class="text-sm font-bold text-white">${p.name[GameState.lang]}</div>
+                              <div class="text-xs text-amber-300 font-semibold">${isAr ? 'في المستودع:' : 'In Warehouse:'} ${whQty}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between bg-slate-900/80 rounded-xl p-2.5">
+                          <span class="text-xs text-slate-400">${isAr ? 'سعر البيع:' : 'Selling Price:'}</span>
+                          <div class="flex items-center gap-2">
+                            <button onclick="Game.adjustProductPrice('${p.id}', -0.25)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-white font-bold">-</button>
+                            <span class="font-extrabold text-emerald-400 text-sm">$${p.price.toFixed(2)}</span>
+                            <button onclick="Game.adjustProductPrice('${p.id}', 0.25)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-emerald-500/30 text-white font-bold">+</button>
+                          </div>
+                        </div>
+                        <button ${whQty <= 0 ? 'disabled' : ''} onclick="Player.pickBoxFromWarehouse('${p.id}', 12); UI.closeTablet();" class="btn-amber w-full py-2 rounded-xl text-xs font-extrabold text-slate-950">
+                          <i class="fa-solid fa-box-open me-1.5"></i>${isAr ? 'حمل صندوق للرفوف (x12)' : 'Carry Crate to Shelves (x12)'}
+                        </button>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+          `;
+        } else if (this.currentTab === 'staff') {
+          container.innerHTML = `
+            <div class="space-y-4">
+              <h3 class="text-base font-extrabold text-white">${isAr ? 'فريق العمل والتوظيف' : 'Human Resources & Store Staff'}</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${EMPLOYEE_CANDIDATES.map(emp => {
+                  const hired = GameState.employees.some(e => e.id === emp.id);
+                  return `
+                    <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4">
+                      <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/30 text-purple-300 flex items-center justify-center text-xl">
+                          <i class="fa-solid ${emp.icon}"></i>
+                        </div>
+                        <div>
+                          <div class="text-sm font-extrabold text-white">${emp.name[GameState.lang]}</div>
+                          <div class="text-xs text-sky-400 font-semibold">${emp.roleLabel[GameState.lang]}</div>
+                          <div class="text-xs text-slate-400 mt-0.5">${isAr ? 'الراتب اليومي:' : 'Daily Wage:'} <strong class="text-amber-300">$${emp.salary}/day</strong></div>
+                        </div>
+                      </div>
+                      ${hired
+                        ? `<button onclick="Game.fireEmployee('${emp.id}')" class="w-full py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold text-xs hover:bg-rose-500 hover:text-white transition">${isAr ? 'إنهاء الخدمة' : 'Dismiss Employee'}</button>`
+                        : `<button onclick="Game.hireEmployee('${emp.id}')" class="btn-emerald w-full py-2.5 rounded-xl font-bold text-xs text-white">${isAr ? 'توظيف الآن' : 'Hire Staff'} ($${emp.salary})</button>`
+                      }
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        } else if (this.currentTab === 'finance') {
+          container.innerHTML = `
+            <div class="space-y-5">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="glass-card rounded-2xl p-4">
+                  <div class="text-xs text-slate-400">${isAr ? 'إجمالي الإيرادات' : 'Total Revenue'}</div>
+                  <div class="text-xl font-extrabold text-emerald-400 mt-1">$${GameState.stats.totalRevenue.toFixed(2)}</div>
+                </div>
+                <div class="glass-card rounded-2xl p-4">
+                  <div class="text-xs text-slate-400">${isAr ? 'صافي الأرباح' : 'Net Profit'}</div>
+                  <div class="text-xl font-extrabold text-sky-400 mt-1">$${GameState.stats.totalProfit.toFixed(2)}</div>
+                </div>
+                <div class="glass-card rounded-2xl p-4">
+                  <div class="text-xs text-slate-400">${isAr ? 'المنتجات المباعة' : 'Units Sold'}</div>
+                  <div class="text-xl font-extrabold text-white mt-1">${GameState.stats.totalSoldItems}</div>
+                </div>
+                <div class="glass-card rounded-2xl p-4">
+                  <div class="text-xs text-slate-400">${isAr ? 'الزبائن المخدومون' : 'Customers Served'}</div>
+                  <div class="text-xl font-extrabold text-amber-300 mt-1">${GameState.stats.totalCustomersServed}</div>
+                </div>
+              </div>
+
+              <div class="glass-card rounded-2xl p-4">
+                <h4 class="text-sm font-extrabold text-white mb-3">${isAr ? 'السجل المالي اليومي' : 'Daily Financial Ledger'}</h4>
+                <div class="space-y-2 text-xs">
+                  ${GameState.financeHistory.slice().reverse().map(h => `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70">
+                      <span class="font-bold text-slate-200">${isAr ? 'اليوم' : 'Day'} ${h.day}</span>
+                      <span class="text-emerald-400">+Rev: $${h.revenue.toFixed(2)}</span>
+                      <span class="text-rose-400">-Exp: $${h.expenses.toFixed(2)}</span>
+                      <span class="font-extrabold ${h.profit >= 0 ? 'text-sky-400' : 'text-rose-400'}">Net: $${h.profit.toFixed(2)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (this.currentTab === 'expand') {
+          container.innerHTML = `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-base font-extrabold text-white mb-3">${isAr ? 'توسعة مساحة السوبر ماركت' : 'Supermarket Real Estate Expansion'}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="glass-card rounded-2xl p-4 border-sky-400/50">
+                    <div class="text-xs font-bold text-sky-400">TIER 1 (ACTIVE)</div>
+                    <div class="text-base font-extrabold text-white mt-1">${isAr ? 'متجر الحي (6 أرفف)' : 'Neighborhood Grocery (6 Shelves)'}</div>
+                    <p class="text-xs text-slate-400 mt-1">20m x 20m Floor Plan</p>
+                  </div>
+                  <div class="glass-card rounded-2xl p-4">
+                    <div class="text-xs font-bold text-amber-400">TIER 2 EXPANSION</div>
+                    <div class="text-base font-extrabold text-white mt-1">${isAr ? 'سوبر ماركت متوسط (8 أرفف)' : 'City Supermarket (8 Shelves)'}</div>
+                    <p class="text-xs text-slate-400 mt-1">Unlocks Meat & Frozen Departments</p>
+                    <button ${GameState.storeTier >= 2 ? 'disabled' : ''} onclick="Game.upgradeStoreTier(2, 1800)" class="btn-aaa w-full mt-3 py-2 rounded-xl text-xs font-bold text-white">
+                      ${GameState.storeTier >= 2 ? (isAr ? 'مُفعّل' : 'Unlocked') : '$1,800.00'}
+                    </button>
+                  </div>
+                  <div class="glass-card rounded-2xl p-4">
+                    <div class="text-xs font-bold text-emerald-400">TIER 3 MEGASTORE</div>
+                    <div class="text-base font-extrabold text-white mt-1">${isAr ? 'هايبر ماركت عالمي (10 أرفف)' : 'International Hypermarket (10 Shelves)'}</div>
+                    <p class="text-xs text-slate-400 mt-1">Unlocks Electronics & Toys Sections</p>
+                    <button ${GameState.storeTier >= 3 ? 'disabled' : ''} onclick="Game.upgradeStoreTier(3, 4500)" class="btn-emerald w-full mt-3 py-2 rounded-xl text-xs font-bold text-white">
+                      ${GameState.storeTier >= 3 ? (isAr ? 'مُفعّل' : 'Unlocked') : '$4,500.00'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-base font-extrabold text-white mb-3">${isAr ? 'تخصيص ديكور الأرضيات والجدران' : 'Store Interior Customization'}</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="glass-card rounded-2xl p-4 space-y-2">
+                    <div class="text-xs font-bold text-slate-300">${isAr ? 'لون بلاط الأرضية' : 'Floor Tile Material'}</div>
+                    <div class="flex gap-2">
+                      ${['#cbd5e1', '#fef3c7', '#bae6fd', '#334155', '#d1fae5'].map(hex => `
+                        <button onclick="Game.customizeStoreColors('${hex}', null)" class="w-9 h-9 rounded-xl border-2 border-white/40" style="background:${hex}"></button>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <div class="glass-card rounded-2xl p-4 space-y-2">
+                    <div class="text-xs font-bold text-slate-300">${isAr ? 'طلاء الجدران' : 'Interior Wall Paint'}</div>
+                    <div class="flex gap-2">
+                      ${['#f1f5f9', '#e0f2fe', '#fef9c3', '#1e293b', '#fce7f3'].map(hex => `
+                        <button onclick="Game.customizeStoreColors(null, '${hex}')" class="w-9 h-9 rounded-xl border-2 border-white/40" style="background:${hex}"></button>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (this.currentTab === 'missions') {
+          container.innerHTML = `
+            <div class="space-y-3">
+              <h3 class="text-base font-extrabold text-white">${isAr ? 'المهام والتحديات اليومية والقصة' : 'Career Milestones & Store Missions'}</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${MISSIONS_DB.map(m => {
+                  const done = GameState.completedMissions.includes(m.id);
+                  const prog = m.getProgress();
+                  const pct = Math.min(100, Math.round((prog / m.target) * 100));
+                  return `
+                    <div class="glass-card rounded-2xl p-4 ${done ? 'border-emerald-500/40 bg-emerald-950/20' : ''}">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-extrabold ${done ? 'text-emerald-400' : 'text-sky-400'}">
+                          ${done ? (isAr ? 'مكتملة ✓' : 'COMPLETED ✓') : (isAr ? 'قيد التنفيذ' : 'IN PROGRESS')}
+                        </span>
+                        <span class="text-xs font-extrabold text-amber-300">+$${m.reward} • +${m.xp} XP</span>
+                      </div>
+                      <div class="text-sm font-bold text-white mb-2">${m.title[GameState.lang]}</div>
+                      <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden mb-1">
+                        <div class="h-full bg-gradient-to-r from-sky-400 to-emerald-400" style="width:${pct}%"></div>
+                      </div>
+                      <div class="text-[11px] text-slate-400 text-end">${prog} / ${m.target}</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
+      },
+
+      renderSaveSlots() {
+        const list = document.getElementById('save-slots-list');
+        list.innerHTML = '';
+        for (let slot = 1; slot <= 3; slot++) {
+          const raw = localStorage.getItem(`supermarket_elite_slot_${slot}`);
+          const info = raw ? JSON.parse(raw) : null;
+          const div = document.createElement('div');
+          div.className = 'glass-card rounded-2xl p-4 flex items-center justify-between gap-3';
+          div.innerHTML = `
+            <div>
+              <div class="font-extrabold text-white text-sm">Slot #${slot} ${slot === 1 ? '(Auto-Save)' : ''}</div>
+              <div class="text-xs text-slate-400">${info ? `Day ${info.state.day} • $${info.state.money.toFixed(2)} • ${info.savedAt}` : 'Empty Save Slot'}</div>
+            </div>
+            <div class="flex gap-2">
+              <button ${!GameState.started ? 'disabled' : ''} onclick="Game.saveToSlot(${slot})" class="btn-aaa px-3 py-2 rounded-xl text-xs font-bold text-white">Save</button>
+              <button ${!info ? 'disabled' : ''} onclick="Game.loadFromSlot(${slot})" class="btn-emerald px-3 py-2 rounded-xl text-xs font-bold text-white">Load</button>
+            </div>
+          `;
+          list.appendChild(div);
+        }
+      },
+
+      updateHUD() {
+        if (!GameState.started) return;
+        document.getElementById('hud-money').textContent = `$${GameState.money.toFixed(2)}`;
+        document.getElementById('hud-level').innerHTML = `${GameState.level} <span class="text-xs text-sky-400 font-normal">(${GameState.xp}/${GameState.level * 100} XP)</span>`;
+        document.getElementById('hud-rating').textContent = `${GameState.rating.toFixed(1)} ★`;
+        document.getElementById('hud-customers').innerHTML = `<i class="fa-solid fa-users text-sky-400 me-1"></i>${AISystem.customers.length}`;
+        document.getElementById('hud-clean').textContent = `${Math.round(GameState.cleanliness)}%`;
+
+        // Format Time
+        const totalMins = Math.floor(GameState.timeMinutes);
+        const h24 = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        const ampm = h24 >= 12 ? 'PM' : 'AM';
+        const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+        document.getElementById('hud-time').textContent = `${String(h12).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${ampm}`;
+        document.getElementById('hud-day').textContent = `${GameState.lang === 'ar' ? 'اليوم' : 'Day'} ${GameState.day}`;
+
+        const wIcon = document.getElementById('hud-weather-icon');
+        wIcon.className = GameState.weather === 'rain'
+          ? 'fa-solid fa-cloud-showers-heavy text-sky-400'
+          : 'fa-solid fa-sun text-amber-400';
+
+        // Store Status Button
+        const statusBtn = document.getElementById('btn-store-status');
+        const statusText = document.getElementById('hud-store-status-text');
+        if (GameState.storeOpen) {
+          statusBtn.className = 'px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition';
+          statusText.textContent = Game.t('store_open');
+        } else {
+          statusBtn.className = 'px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 transition';
+          statusText.textContent = Game.t('store_closed');
+        }
+
+        // Active Mission Card
+        const nextMission = MISSIONS_DB.find(m => !GameState.completedMissions.includes(m.id)) || MISSIONS_DB[MISSIONS_DB.length - 1];
+        const prog = nextMission.getProgress();
+        const pct = Math.min(100, (prog / nextMission.target) * 100);
+        document.getElementById('hud-mission-title').textContent = nextMission.title[GameState.lang];
+        document.getElementById('hud-mission-reward').textContent = `+$${nextMission.reward}`;
+        document.getElementById('hud-mission-bar').style.width = `${pct}%`;
+        document.getElementById('hud-mission-progress').textContent = `${prog} / ${nextMission.target}`;
+      },
+
+      toast(message, tone = 'sky') {
+        const container = document.getElementById('toast-container');
+        const colors = {
+          sky: 'border-sky-400/50 text-sky-200',
+          emerald: 'border-emerald-400/50 text-emerald-200',
+          amber: 'border-amber-400/50 text-amber-200',
+          rose: 'border-rose-400/50 text-rose-200'
+        };
+        const el = document.createElement('div');
+        el.className = `toast-anim glass-panel px-4 py-2.5 rounded-2xl text-xs font-bold border ${colors[tone] || colors.sky} shadow-xl`;
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3400);
+      }
+    };
+
+    // ==================== 11. MAIN ANIMATION LOOP ====================
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(World3D.clock.getDelta(), 0.1);
+
+      if (GameState.started) {
+        Player.update(dt);
+        AISystem.update(dt);
+        Game.advanceTime(dt);
+        Game.checkMissions();
+        UI.updateHUD();
+      } else {
+        // Gentle scenic camera orbit on Main Menu
+        const t = performance.now() * 0.00025;
+        World3D.camera.position.set(Math.sin(t) * 6, 3.2, Math.cos(t) * 6);
+        World3D.camera.lookAt(0, 1.2, -1);
+      }
+
+      World3D.renderer.render(World3D.scene, World3D.camera);
+    }
+
+    window.onload = function () {
+      World3D.init();
+      Player.init();
+      Game.setLanguage('en');
+      animate();
+    };
+  </script>
+</body>
+</html>
